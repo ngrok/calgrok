@@ -18,6 +18,8 @@ export type CalendarIssue = {
 	team: { id: string; key: string; name: string };
 };
 
+export type LinearLabel = { id: string; name: string; color: string };
+
 export type IssuesQueryParams = {
 	/** Inclusive "YYYY-MM-DD". */
 	start: string;

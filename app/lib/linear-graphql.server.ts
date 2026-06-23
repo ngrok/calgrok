@@ -1,4 +1,4 @@
-import type { CalendarIssue } from "~/features/calendar/types";
+import type { CalendarIssue, LinearLabel } from "~/features/calendar/types";
 
 const GRAPHQL_URL = "https://api.linear.app/graphql";
 
@@ -107,4 +107,44 @@ export async function fetchCalendarIssues(params: {
 	}
 
 	return issues;
+}
+
+const LABELS_QUERY = `
+query IssueLabels($first: Int!, $after: String) {
+  issueLabels(first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id name color isGroup }
+  }
+}`;
+
+type LabelsData = {
+	issueLabels: {
+		pageInfo: { hasNextPage: boolean; endCursor: string | null };
+		nodes: { id: string; name: string; color: string; isGroup: boolean }[];
+	};
+};
+
+/** All applicable labels (group/parent labels excluded), sorted by name. */
+export async function fetchLabels(accessToken: string): Promise<LinearLabel[]> {
+	const labels: LinearLabel[] = [];
+	let after: string | null = null;
+
+	for (let page = 0; page < 20; page++) {
+		const result: LabelsData = await linearGraphQL<LabelsData>(accessToken, LABELS_QUERY, {
+			first: 250,
+			after,
+		});
+		for (const node of result.issueLabels.nodes) {
+			if (!node.isGroup) {
+				labels.push({ id: node.id, name: node.name, color: node.color });
+			}
+		}
+		if (!result.issueLabels.pageInfo.hasNextPage) {
+			break;
+		}
+		after = result.issueLabels.pageInfo.endCursor;
+	}
+
+	labels.sort((a, b) => a.name.localeCompare(b.name));
+	return labels;
 }

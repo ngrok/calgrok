@@ -1,5 +1,5 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query";
-import type { CalendarIssue, IssuesQueryParams } from "./types";
+import type { CalendarIssue, IssuesQueryParams, LinearLabel } from "./types";
 
 const ROOT = "calendar";
 
@@ -39,6 +39,25 @@ export function useCalendarIssues(params: IssuesQueryParams) {
 	return useQuery({
 		queryKey: calendarKeys.issues(params),
 		queryFn: () => fetchIssues(params),
+		// No teams selected → nothing to show; skip the request entirely.
+		enabled: (params.teamIds?.length ?? 0) > 0,
+	});
+}
+
+async function fetchLabelsList(): Promise<LinearLabel[]> {
+	const res = await fetch("/api/labels", { headers: { Accept: "application/json" } });
+	if (!res.ok) {
+		throw new Error(`Failed to load labels (${res.status})`);
+	}
+	const json = (await res.json()) as { labels: LinearLabel[] };
+	return json.labels;
+}
+
+export function useLabels() {
+	return useQuery({
+		queryKey: [ROOT, "labels"] as const,
+		queryFn: fetchLabelsList,
+		staleTime: 5 * 60 * 1000, // labels change rarely
 	});
 }
 

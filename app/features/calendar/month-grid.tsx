@@ -1,9 +1,8 @@
 import { Button } from "@ngrok/mantle/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { addMonths, format, isSameDay, isSameMonth, startOfMonth } from "date-fns";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { addMonths, format, isSameDay, isSameMonth, startOfMonth } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_TEAM_IDS } from "~/lib/teams";
 import {
 	groupIssuesByDueDate,
 	monthGridDays,
@@ -23,7 +22,7 @@ function useHydrated(): boolean {
 	return hydrated;
 }
 
-export function MonthGrid() {
+export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: string[] }) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
 	const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -33,27 +32,33 @@ export function MonthGrid() {
 		() => ({
 			start: toISODate(range.gridStart),
 			end: toISODate(range.gridEnd),
-			teamIds: DEFAULT_TEAM_IDS,
+			teamIds,
+			labelIds,
 		}),
-		[range],
+		[range, teamIds, labelIds],
 	);
 
 	const { data: issues = [], isLoading, isError } = useCalendarIssues(params);
 	const byDate = useMemo(() => groupIssuesByDueDate(issues), [issues]);
 	const days = useMemo(() => monthGridDays(month), [month]);
 	const today = useMemo(() => new Date(), []);
+	const noTeams = teamIds.length === 0;
 
 	// Prefetch the neighbouring months so prev/next feels instant.
 	useEffect(() => {
+		if (noTeams) {
+			return;
+		}
 		for (const offset of [-1, 1]) {
 			const neighbour = monthGridRange(addMonths(month, offset));
 			prefetchCalendarIssues(queryClient, {
 				start: toISODate(neighbour.gridStart),
 				end: toISODate(neighbour.gridEnd),
-				teamIds: DEFAULT_TEAM_IDS,
+				teamIds,
+				labelIds,
 			});
 		}
-	}, [month, queryClient]);
+	}, [month, queryClient, teamIds, labelIds, noTeams]);
 
 	return (
 		<div className="flex flex-col">
@@ -110,6 +115,10 @@ export function MonthGrid() {
 			) : (
 				<div className="h-96 animate-pulse rounded border border-card bg-card" />
 			)}
+
+			{noTeams ? (
+				<p className="pt-3 text-sm text-muted">Select at least one team to see issues.</p>
+			) : null}
 
 			{isError ? (
 				<p className="pt-3 text-sm text-strong">
