@@ -61,8 +61,9 @@ export function useCalendarIssues(params: IssuesQueryParams) {
 	return useQuery({
 		queryKey: calendarKeys.issues(params),
 		queryFn: () => fetchIssues(params),
-		// No teams selected → nothing to show; skip the request entirely.
-		enabled: (params.teamIds?.length ?? 0) > 0,
+		// Need at least one team and the content-type label set resolved; otherwise
+		// there's nothing meaningful (or safe) to show yet.
+		enabled: (params.teamIds?.length ?? 0) > 0 && (params.labelIds?.length ?? 0) > 0,
 		// Keep showing the current month while the next one loads (no empty flash).
 		placeholderData: keepPreviousData,
 	});

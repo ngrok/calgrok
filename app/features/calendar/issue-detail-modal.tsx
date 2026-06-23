@@ -96,6 +96,19 @@ export function IssueDetailModal({
 							<span className="inline-flex items-center rounded-full border border-card px-2 py-0.5 text-xs text-muted">
 								{issue.priorityLabel}
 							</span>
+							{issue.project ? (
+								<a
+									href={issue.project.url}
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex items-center gap-1 text-muted hover:text-strong"
+								>
+									<FolderOpen className="size-4" />
+									{issue.project.name}
+								</a>
+							) : (
+								<span className="text-muted">No project</span>
+							)}
 						</div>
 
 						<section>
@@ -180,13 +193,6 @@ export function IssueDetailModal({
 					</Dialog.Body>
 
 					<Dialog.Footer>
-						{issue.project ? (
-							<Button asChild appearance="outlined" icon={<FolderOpen />}>
-								<a href={issue.project.url} target="_blank" rel="noreferrer">
-									Project
-								</a>
-							</Button>
-						) : null}
 						<Button asChild appearance="filled" icon={<ArrowSquareOut />}>
 							<a href={issue.url} target="_blank" rel="noreferrer">
 								Open in Linear
