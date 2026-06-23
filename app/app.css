@@ -1,0 +1,8 @@
+/*
+ * Mantle ships its own Tailwind v4 entry: importing mantle.css pulls in
+ * `@import "tailwindcss"`, the mantle design tokens, fonts, and animations.
+ * We only need to tell Tailwind to also scan our own source for class usage.
+ */
+@import "@ngrok/mantle/mantle.css";
+
+@source "./**/*.{ts,tsx}";

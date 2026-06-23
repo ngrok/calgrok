@@ -1,0 +1,9 @@
+node_modules/
+/build/
+/.react-router/
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+npm-debug.log*

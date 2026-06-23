@@ -1,0 +1,51 @@
+{
+	"name": "calgrok",
+	"private": true,
+	"type": "module",
+	"sideEffects": false,
+	"scripts": {
+		"dev": "react-router dev",
+		"build": "react-router build",
+		"start": "react-router-serve ./build/server/index.js",
+		"typecheck": "react-router typegen && tsc",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"fmt": "biome format --write .",
+		"lint": "biome check ."
+	},
+	"dependencies": {
+		"@linear/sdk": "87.0.0",
+		"@ngrok/mantle": "0.76.6",
+		"@phosphor-icons/react": "2.1.10",
+		"@react-router/node": "7.18.0",
+		"@react-router/serve": "7.18.0",
+		"@tanstack/react-query": "5.101.1",
+		"date-fns": "4.4.0",
+		"dotenv": "17.4.2",
+		"isbot": "5.1.44",
+		"react": "19.2.7",
+		"react-dom": "19.2.7",
+		"react-router": "7.18.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.1",
+		"@react-router/dev": "7.18.0",
+		"@tailwindcss/vite": "4.3.1",
+		"@testing-library/jest-dom": "6.9.1",
+		"@testing-library/react": "16.3.2",
+		"@testing-library/user-event": "14.6.1",
+		"@types/node": "26.0.0",
+		"@types/react": "19.2.17",
+		"@types/react-dom": "19.2.3",
+		"@vitejs/plugin-react": "6.0.3",
+		"jsdom": "29.1.1",
+		"tailwindcss": "4.3.1",
+		"typescript": "6.0.3",
+		"vite": "8.1.0",
+		"vitest": "4.1.9"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"packageManager": "pnpm@10.33.4+sha512.1c67b3b359b2d408119ba1ed289f34b8fc3c6873412bec6fd264fbdc82489e510fcbecb9ce9d22dae7f3b76269d8441046014bdca53b9979cd7a561ad631b800"
+}
