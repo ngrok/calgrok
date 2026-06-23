@@ -182,7 +182,10 @@ app/
 4. ✅ **Filters** — team toggles (default GTM+Content; all-off → empty) and a
    label multi-select popover (`/api/labels`). Filter state lifted to a
    `useCalendarFilters` hook, ready to be backed by saved views in milestone 6.
-5. **Drag-and-drop reschedule** — optimistic `issueUpdate`.
+5. ✅ **Drag-and-drop reschedule** — `@dnd-kit` draggable cards onto droppable
+   day cells; optimistic `issueUpdate` on `dueDate` via `POST /api/issues` with
+   rollback on failure. Drag activates after 5px so issue/project links stay
+   clickable.
 6. **Custom views** — localStorage CRUD, view switcher.
 7. **Polish & perf pass** — adjacent-month prefetch, memoization audit, empty/
    loading/error states, toasts.

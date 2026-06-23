@@ -148,3 +148,25 @@ export async function fetchLabels(accessToken: string): Promise<LinearLabel[]> {
 	labels.sort((a, b) => a.name.localeCompare(b.name));
 	return labels;
 }
+
+const UPDATE_DUE_DATE_MUTATION = `
+mutation UpdateDueDate($id: String!, $dueDate: TimelessDate) {
+  issueUpdate(id: $id, input: { dueDate: $dueDate }) {
+    success
+  }
+}`;
+
+export async function updateIssueDueDate(params: {
+	accessToken: string;
+	issueId: string;
+	dueDate: string;
+}): Promise<void> {
+	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
+		params.accessToken,
+		UPDATE_DUE_DATE_MUTATION,
+		{ id: params.issueId, dueDate: params.dueDate },
+	);
+	if (!data.issueUpdate.success) {
+		throw new Error("Linear did not accept the due date update");
+	}
+}

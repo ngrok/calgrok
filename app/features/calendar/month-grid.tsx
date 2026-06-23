@@ -1,3 +1,13 @@
+import {
+	DndContext,
+	DragOverlay,
+	type DragEndEvent,
+	type DragStartEvent,
+	PointerSensor,
+	pointerWithin,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
 import { Button } from "@ngrok/mantle/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
@@ -11,7 +21,9 @@ import {
 	WEEKDAY_LABELS,
 } from "./date-utils";
 import { DayCell } from "./day-cell";
-import { prefetchCalendarIssues, useCalendarIssues } from "./queries";
+import { IssueCard } from "./issue-card";
+import { prefetchCalendarIssues, useCalendarIssues, useUpdateDueDate } from "./queries";
+import type { CalendarIssue } from "./types";
 
 // Render a placeholder until mounted so the date-dependent grid doesn't differ
 // between server and first client render (avoids hydration mismatch), and so
@@ -43,6 +55,25 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 	const days = useMemo(() => monthGridDays(month), [month]);
 	const today = useMemo(() => new Date(), []);
 	const noTeams = teamIds.length === 0;
+
+	const updateDueDate = useUpdateDueDate();
+	const [activeIssue, setActiveIssue] = useState<CalendarIssue | null>(null);
+	// Require a small drag distance so clicking the issue/project links still works.
+	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+	function handleDragStart(event: DragStartEvent) {
+		setActiveIssue((event.active.data.current?.issue as CalendarIssue | undefined) ?? null);
+	}
+
+	function handleDragEnd(event: DragEndEvent) {
+		const issue = event.active.data.current?.issue as CalendarIssue | undefined;
+		setActiveIssue(null);
+		const newDueDate = event.over?.id;
+		if (!issue || typeof newDueDate !== "string" || newDueDate === issue.dueDate) {
+			return;
+		}
+		updateDueDate.mutate({ issueId: issue.id, dueDate: newDueDate });
+	}
 
 	// Prefetch the neighbouring months so prev/next feels instant.
 	useEffect(() => {
@@ -101,17 +132,31 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 			</div>
 
 			{hydrated ? (
-				<div className="grid grid-cols-7 border-l border-t border-card">
-					{days.map((day) => (
-						<DayCell
-							key={day.toISOString()}
-							date={day}
-							issues={byDate.get(toISODate(day)) ?? []}
-							isCurrentMonth={isSameMonth(day, month)}
-							isToday={isSameDay(day, today)}
-						/>
-					))}
-				</div>
+				<DndContext
+					sensors={sensors}
+					collisionDetection={pointerWithin}
+					onDragStart={handleDragStart}
+					onDragEnd={handleDragEnd}
+				>
+					<div className="grid grid-cols-7 border-l border-t border-card">
+						{days.map((day) => (
+							<DayCell
+								key={day.toISOString()}
+								date={day}
+								issues={byDate.get(toISODate(day)) ?? []}
+								isCurrentMonth={isSameMonth(day, month)}
+								isToday={isSameDay(day, today)}
+							/>
+						))}
+					</div>
+					<DragOverlay>
+						{activeIssue ? (
+							<div className="w-40 rotate-2 opacity-90">
+								<IssueCard issue={activeIssue} />
+							</div>
+						) : null}
+					</DragOverlay>
+				</DndContext>
 			) : (
 				<div className="h-96 animate-pulse rounded border border-card bg-card" />
 			)}

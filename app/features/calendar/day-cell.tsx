@@ -1,5 +1,7 @@
+import { useDroppable } from "@dnd-kit/core";
 import { cx } from "@ngrok/mantle/cx";
-import { IssueCard } from "./issue-card";
+import { toISODate } from "./date-utils";
+import { DraggableIssueCard } from "./draggable-issue-card";
 import type { CalendarIssue } from "./types";
 
 export function DayCell({
@@ -13,8 +15,17 @@ export function DayCell({
 	isCurrentMonth: boolean;
 	isToday: boolean;
 }) {
+	// Each day is a drop target keyed by its ISO date (the new dueDate).
+	const { setNodeRef, isOver } = useDroppable({ id: toISODate(date) });
+
 	return (
-		<div className="flex min-h-28 flex-col gap-1 border-b border-r border-card p-1">
+		<div
+			ref={setNodeRef}
+			className={cx(
+				"flex min-h-28 flex-col gap-1 border-b border-r border-card p-1",
+				isOver && "bg-filled-accent/10 ring-1 ring-inset ring-accent-500",
+			)}
+		>
 			<div className="flex justify-end">
 				<span
 					className={cx(
@@ -30,7 +41,7 @@ export function DayCell({
 
 			<div className="flex flex-col gap-1">
 				{issues.map((issue) => (
-					<IssueCard key={issue.id} issue={issue} />
+					<DraggableIssueCard key={issue.id} issue={issue} />
 				))}
 			</div>
 		</div>
