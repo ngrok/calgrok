@@ -1,5 +1,6 @@
 import { Button } from "@ngrok/mantle/button";
-import { data, Form } from "react-router";
+import { data } from "react-router";
+import { CalendarPage } from "~/features/calendar/calendar-page";
 import { getLinearAuth } from "~/lib/linear.server";
 import type { Route } from "./+types/home";
 
@@ -30,34 +31,25 @@ export async function loader({ request }: Route.LoaderArgs) {
 	}
 }
 
-export function HomeView({ viewer }: { viewer: Viewer | null }) {
+export function ConnectScreen() {
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-4 p-8 text-center">
 			<h1 className="text-4xl font-medium text-strong">calgrok</h1>
 			<p className="max-w-prose text-muted">
-				A fast, month-view content calendar backed live by Linear.
+				A fast, month-view content calendar backed live by Linear. Connect your Linear account
+				to see GTM &amp; Content issues by their due date.
 			</p>
-
-			{viewer ? (
-				<div className="flex flex-col items-center gap-3">
-					<p className="text-muted">
-						Connected as <span className="text-strong">{viewer.name}</span> ({viewer.email})
-					</p>
-					<Form method="post" action="/auth/logout">
-						<Button type="submit" appearance="outlined">
-							Disconnect Linear
-						</Button>
-					</Form>
-				</div>
-			) : (
-				<Button asChild appearance="filled">
-					<a href="/auth/linear">Connect Linear</a>
-				</Button>
-			)}
+			<Button asChild appearance="filled">
+				<a href="/auth/linear">Connect Linear</a>
+			</Button>
 		</main>
 	);
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-	return <HomeView viewer={loaderData.viewer} />;
+	return loaderData.viewer ? (
+		<CalendarPage viewer={loaderData.viewer} />
+	) : (
+		<ConnectScreen />
+	);
 }

@@ -174,8 +174,11 @@ app/
    refresh, logout/revoke, `whoami` (viewer shown on the home page). The
    authenticated `getLinearAuth(request)` helper is the basis for the BFF
    resource routes in milestone 3.
-3. **Read calendar** — month grid, scoped+paginated issue query, status colors,
-   issue cards with issue/project links.
+3. ✅ **Read calendar** — month grid (Mon-start, prev/next/today + adjacent-month
+   prefetch), single batched + paginated issue query scoped to teams + visible
+   window (BFF resource route `/api/issues`), status-colored cards with
+   assignee, label dots, and issue/project links. Teams hardcoded: GTM
+   (`eab6f126…`) + Content (`4610eaa2…`).
 4. **Filters** — team (default GTM+Content) and label filtering.
 5. **Drag-and-drop reschedule** — optimistic `issueUpdate`.
 6. **Custom views** — localStorage CRUD, view switcher.
