@@ -1,4 +1,8 @@
-import { fetchCalendarIssues, updateIssueDueDate } from "~/lib/linear-graphql.server";
+import {
+	fetchCalendarIssues,
+	updateIssueDueDate,
+	updateIssueLabels,
+} from "~/lib/linear-graphql.server";
 import { getLinearAuth } from "~/lib/linear.server";
 import { DEFAULT_TEAM_IDS } from "~/lib/teams";
 import type { Route } from "./+types/api.issues";
@@ -37,23 +41,43 @@ export async function loader({ request }: Route.LoaderArgs) {
 	return Response.json({ issues }, auth.headers ? { headers: auth.headers } : undefined);
 }
 
-// Reschedule an issue: POST { issueId, dueDate } -> Linear issueUpdate.
+// Update an issue: POST { issueId, dueDate? , labelIds? } -> Linear issueUpdate.
 export async function action({ request }: Route.ActionArgs) {
 	const auth = await getLinearAuth(request);
 	if (!auth) {
 		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const body = (await request.json()) as { issueId?: string; dueDate?: string };
-	if (!body.issueId || !body.dueDate) {
-		throw new Response("Missing 'issueId' or 'dueDate'", { status: 400 });
+	const body = (await request.json()) as {
+		issueId?: string;
+		dueDate?: string | null;
+		labelIds?: string[];
+	};
+	if (!body.issueId) {
+		throw new Response("Missing 'issueId'", { status: 400 });
 	}
 
-	await updateIssueDueDate({
-		accessToken: auth.accessToken,
-		issueId: body.issueId,
-		dueDate: body.dueDate,
-	});
+	// dueDate present (string to set, null to clear) vs. absent.
+	const hasDueDate = "dueDate" in body;
+	const hasLabels = Array.isArray(body.labelIds);
+	if (!hasDueDate && !hasLabels) {
+		throw new Response("Provide 'dueDate' and/or 'labelIds'", { status: 400 });
+	}
+
+	if (hasDueDate) {
+		await updateIssueDueDate({
+			accessToken: auth.accessToken,
+			issueId: body.issueId,
+			dueDate: body.dueDate ?? null,
+		});
+	}
+	if (hasLabels) {
+		await updateIssueLabels({
+			accessToken: auth.accessToken,
+			issueId: body.issueId,
+			labelIds: body.labelIds as string[],
+		});
+	}
 
 	return Response.json({ ok: true }, auth.headers ? { headers: auth.headers } : undefined);
 }

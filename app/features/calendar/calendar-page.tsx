@@ -27,7 +27,7 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 				labelIds={filters.labelIds}
 				labels={labels}
 				onToggleTeam={filters.toggleTeam}
-				onToggleLabel={filters.toggleLabel}
+				onToggleLabelGroup={filters.toggleLabelGroup}
 				onClearLabels={filters.clearLabels}
 			/>
 

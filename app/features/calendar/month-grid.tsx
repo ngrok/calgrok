@@ -22,6 +22,7 @@ import {
 } from "./date-utils";
 import { DayCell } from "./day-cell";
 import { IssueCard } from "./issue-card";
+import { IssueDetailModal } from "./issue-detail-modal";
 import { prefetchCalendarIssues, useCalendarIssues, useUpdateDueDate } from "./queries";
 import type { CalendarIssue } from "./types";
 
@@ -58,6 +59,14 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 
 	const updateDueDate = useUpdateDueDate();
 	const [activeIssue, setActiveIssue] = useState<CalendarIssue | null>(null);
+
+	// Derive the open issue from the live query data (by id) so optimistic edits
+	// in the modal reflect immediately.
+	const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+	const selectedIssue = useMemo(
+		() => issues.find((issue) => issue.id === selectedIssueId) ?? null,
+		[issues, selectedIssueId],
+	);
 	// Require a small drag distance so clicking the issue/project links still works.
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -146,6 +155,7 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 								issues={byDate.get(toISODate(day)) ?? []}
 								isCurrentMonth={isSameMonth(day, month)}
 								isToday={isSameDay(day, today)}
+								onOpenIssue={(issue) => setSelectedIssueId(issue.id)}
 							/>
 						))}
 					</div>
@@ -174,6 +184,8 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 					.
 				</p>
 			) : null}
+
+			<IssueDetailModal issue={selectedIssue} onClose={() => setSelectedIssueId(null)} />
 		</div>
 	);
 }

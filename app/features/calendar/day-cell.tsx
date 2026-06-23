@@ -9,11 +9,13 @@ export function DayCell({
 	issues,
 	isCurrentMonth,
 	isToday,
+	onOpenIssue,
 }: {
 	date: Date;
 	issues: CalendarIssue[];
 	isCurrentMonth: boolean;
 	isToday: boolean;
+	onOpenIssue: (issue: CalendarIssue) => void;
 }) {
 	// Each day is a drop target keyed by its ISO date (the new dueDate).
 	const { setNodeRef, isOver } = useDroppable({ id: toISODate(date) });
@@ -41,7 +43,7 @@ export function DayCell({
 
 			<div className="flex flex-col gap-1">
 				{issues.map((issue) => (
-					<DraggableIssueCard key={issue.id} issue={issue} />
+					<DraggableIssueCard key={issue.id} issue={issue} onOpen={onOpenIssue} />
 				))}
 			</div>
 		</div>

@@ -51,9 +51,7 @@ export function IssueCard({ issue }: { issue: CalendarIssue }) {
 							style={{ backgroundColor: label.color }}
 						/>
 					))}
-					{extraLabels > 0 ? (
-						<span className="text-[10px] text-muted">+{extraLabels}</span>
-					) : null}
+					{extraLabels > 0 ? <span className="text-[10px] text-muted">+{extraLabels}</span> : null}
 				</div>
 
 				<div className="flex shrink-0 items-center gap-1 text-muted">
@@ -61,6 +59,7 @@ export function IssueCard({ issue }: { issue: CalendarIssue }) {
 						href={issue.url}
 						target="_blank"
 						rel="noreferrer"
+						onClick={(e) => e.stopPropagation()}
 						aria-label={`Open issue ${issue.identifier}`}
 						title={`Open issue ${issue.identifier}`}
 						className="hover:text-strong"
@@ -75,6 +74,7 @@ export function IssueCard({ issue }: { issue: CalendarIssue }) {
 							aria-label={`Open project: ${issue.project.name}`}
 							title={`Open project: ${issue.project.name}`}
 							className={cx("hover:text-strong")}
+							onClick={(e) => e.stopPropagation()}
 						>
 							<FolderOpen className="size-3.5" />
 						</a>

@@ -39,8 +39,10 @@ export default function App() {
 			new QueryClient({
 				defaultOptions: {
 					queries: {
-						staleTime: 60_000,
-						refetchOnWindowFocus: false,
+						// Refetch when returning to the tab so issues changed in Linear
+						// (new due dates, edits) show up without a manual reload.
+						staleTime: 30_000,
+						refetchOnWindowFocus: true,
 					},
 				},
 			}),

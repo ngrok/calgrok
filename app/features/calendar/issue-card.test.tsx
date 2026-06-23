@@ -9,6 +9,8 @@ const issue: CalendarIssue = {
 	title: "Launch blog post",
 	dueDate: "2026-06-23",
 	url: "https://linear.app/ngrok/issue/GTM-1",
+	priority: 2,
+	priorityLabel: "High",
 	state: { id: "s1", name: "In Progress", color: "#f2c94c", type: "started" },
 	assignee: { id: "u1", name: "Joel Hans", displayName: "Joel", avatarUrl: null },
 	labels: [{ id: "l1", name: "Blog", color: "#5e6ad2" }],

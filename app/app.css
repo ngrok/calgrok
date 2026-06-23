@@ -1,8 +1,18 @@
 /*
  * Mantle ships its own Tailwind v4 entry: importing mantle.css pulls in
  * `@import "tailwindcss"`, the mantle design tokens, fonts, and animations.
- * We only need to tell Tailwind to also scan our own source for class usage.
  */
 @import "@ngrok/mantle/mantle.css";
 
+/* Scan our own source for class names. */
 @source "./**/*.{ts,tsx}";
+
+/*
+ * Also scan mantle's compiled components. Mantle's own `@source "../dist"`
+ * (inside its node_modules copy of mantle.css) doesn't get applied in this
+ * setup, so utilities used only by mantle components — dialog/popover
+ * positioning (`fixed`, `inset-*`, `z-50`), surfaces (`bg-dialog`,
+ * `bg-overlay`), and the data-state animations — never get generated.
+ * Pointing @source here, relative to this file, fixes that.
+ */
+@source "../node_modules/@ngrok/mantle/dist";

@@ -1,5 +1,5 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CalendarIssue, IssuesQueryParams, LinearLabel } from "./types";
+import type { CalendarIssue, IssuesQueryParams, LabelOption } from "./types";
 
 const ROOT = "calendar";
 
@@ -44,12 +44,12 @@ export function useCalendarIssues(params: IssuesQueryParams) {
 	});
 }
 
-async function fetchLabelsList(): Promise<LinearLabel[]> {
+async function fetchLabelsList(): Promise<LabelOption[]> {
 	const res = await fetch("/api/labels", { headers: { Accept: "application/json" } });
 	if (!res.ok) {
 		throw new Error(`Failed to load labels (${res.status})`);
 	}
-	const json = (await res.json()) as { labels: LinearLabel[] };
+	const json = (await res.json()) as { labels: LabelOption[] };
 	return json.labels;
 }
 
@@ -58,6 +58,22 @@ export function useLabels() {
 		queryKey: [ROOT, "labels"] as const,
 		queryFn: fetchLabelsList,
 		staleTime: 5 * 60 * 1000, // labels change rarely
+	});
+}
+
+export function useIssueDescription(issueId: string | null) {
+	return useQuery({
+		queryKey: [ROOT, "issue", issueId] as const,
+		queryFn: async () => {
+			const res = await fetch(`/api/issue?id=${encodeURIComponent(issueId as string)}`, {
+				headers: { Accept: "application/json" },
+			});
+			if (!res.ok) {
+				throw new Error(`Failed to load issue (${res.status})`);
+			}
+			return (await res.json()) as { description: string | null };
+		},
+		enabled: Boolean(issueId),
 	});
 }
 
@@ -90,6 +106,88 @@ export function useUpdateDueDate() {
 			const previous = queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter);
 			queryClient.setQueriesData<CalendarIssue[]>(issuesQueryFilter, (old) =>
 				old?.map((issue) => (issue.id === issueId ? { ...issue, dueDate } : issue)),
+			);
+			return { previous };
+		},
+		onError: (_error, _vars, context) => {
+			for (const [key, data] of context?.previous ?? []) {
+				queryClient.setQueryData(key, data);
+			}
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries(issuesQueryFilter);
+		},
+	});
+}
+
+async function postClearDueDate(issueId: string): Promise<void> {
+	const res = await fetch("/api/issues", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ issueId, dueDate: null }),
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to clear due date (${res.status})`);
+	}
+}
+
+/**
+ * Clear an issue's dueDate. Optimistically removes it from the calendar (an
+ * undated issue has no place on the grid), rolling back on failure.
+ */
+export function useClearDueDate() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (issueId: string) => postClearDueDate(issueId),
+		onMutate: async (issueId) => {
+			await queryClient.cancelQueries(issuesQueryFilter);
+			const previous = queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter);
+			queryClient.setQueriesData<CalendarIssue[]>(issuesQueryFilter, (old) =>
+				old?.filter((issue) => issue.id !== issueId),
+			);
+			return { previous };
+		},
+		onError: (_error, _vars, context) => {
+			for (const [key, data] of context?.previous ?? []) {
+				queryClient.setQueryData(key, data);
+			}
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries(issuesQueryFilter);
+		},
+	});
+}
+
+async function postLabels(issueId: string, labelIds: string[]): Promise<void> {
+	const res = await fetch("/api/issues", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ issueId, labelIds }),
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to update labels (${res.status})`);
+	}
+}
+
+/**
+ * Replace an issue's labels with the given full set (caller merges kept
+ * non-namespace labels), optimistically updating the cache with rollback.
+ */
+export function useUpdateLabels() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ issueId, labels }: { issueId: string; labels: CalendarIssue["labels"] }) =>
+			postLabels(
+				issueId,
+				labels.map((label) => label.id),
+			),
+		onMutate: async ({ issueId, labels }) => {
+			await queryClient.cancelQueries(issuesQueryFilter);
+			const previous = queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter);
+			queryClient.setQueriesData<CalendarIssue[]>(issuesQueryFilter, (old) =>
+				old?.map((issue) => (issue.id === issueId ? { ...issue, labels } : issue)),
 			);
 			return { previous };
 		},

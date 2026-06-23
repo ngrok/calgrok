@@ -36,8 +36,8 @@ export function ConnectScreen() {
 		<main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-4 p-8 text-center">
 			<h1 className="text-4xl font-medium text-strong">calgrok</h1>
 			<p className="max-w-prose text-muted">
-				A fast, month-view content calendar backed live by Linear. Connect your Linear account
-				to see GTM &amp; Content issues by their due date.
+				A fast, month-view content calendar backed live by Linear. Connect your Linear account to
+				see GTM &amp; Content issues by their due date.
 			</p>
 			<Button asChild appearance="filled">
 				<a href="/auth/linear">Connect Linear</a>
@@ -47,9 +47,5 @@ export function ConnectScreen() {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-	return loaderData.viewer ? (
-		<CalendarPage viewer={loaderData.viewer} />
-	) : (
-		<ConnectScreen />
-	);
+	return loaderData.viewer ? <CalendarPage viewer={loaderData.viewer} /> : <ConnectScreen />;
 }

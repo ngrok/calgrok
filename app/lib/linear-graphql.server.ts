@@ -1,4 +1,6 @@
-import type { CalendarIssue, LinearLabel } from "~/features/calendar/types";
+import type { CalendarIssue } from "~/features/calendar/types";
+
+export type RawLabel = { id: string; name: string; color: string; teamId: string | null };
 
 const GRAPHQL_URL = "https://api.linear.app/graphql";
 
@@ -49,6 +51,8 @@ query CalendarIssues($filter: IssueFilter!, $first: Int!, $after: String) {
       title
       dueDate
       url
+      priority
+      priorityLabel
       state { id name color type }
       assignee { id name displayName avatarUrl }
       labels { nodes { id name color } }
@@ -113,20 +117,30 @@ const LABELS_QUERY = `
 query IssueLabels($first: Int!, $after: String) {
   issueLabels(first: $first, after: $after) {
     pageInfo { hasNextPage endCursor }
-    nodes { id name color isGroup }
+    nodes { id name color isGroup team { id } }
   }
 }`;
 
 type LabelsData = {
 	issueLabels: {
 		pageInfo: { hasNextPage: boolean; endCursor: string | null };
-		nodes: { id: string; name: string; color: string; isGroup: boolean }[];
+		nodes: {
+			id: string;
+			name: string;
+			color: string;
+			isGroup: boolean;
+			team: { id: string } | null;
+		}[];
 	};
 };
 
-/** All applicable labels (group/parent labels excluded), sorted by name. */
-export async function fetchLabels(accessToken: string): Promise<LinearLabel[]> {
-	const labels: LinearLabel[] = [];
+/**
+ * All non-group labels with their owning team. Labels with the same name can
+ * exist in multiple teams (e.g. `con/web` in both GTM and Content); the route
+ * groups them for display while keeping each team's id.
+ */
+export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
+	const labels: RawLabel[] = [];
 	let after: string | null = null;
 
 	for (let page = 0; page < 20; page++) {
@@ -136,7 +150,12 @@ export async function fetchLabels(accessToken: string): Promise<LinearLabel[]> {
 		});
 		for (const node of result.issueLabels.nodes) {
 			if (!node.isGroup) {
-				labels.push({ id: node.id, name: node.name, color: node.color });
+				labels.push({
+					id: node.id,
+					name: node.name,
+					color: node.color,
+					teamId: node.team?.id ?? null,
+				});
 			}
 		}
 		if (!result.issueLabels.pageInfo.hasNextPage) {
@@ -145,7 +164,6 @@ export async function fetchLabels(accessToken: string): Promise<LinearLabel[]> {
 		after = result.issueLabels.pageInfo.endCursor;
 	}
 
-	labels.sort((a, b) => a.name.localeCompare(b.name));
 	return labels;
 }
 
@@ -159,7 +177,8 @@ mutation UpdateDueDate($id: String!, $dueDate: TimelessDate) {
 export async function updateIssueDueDate(params: {
 	accessToken: string;
 	issueId: string;
-	dueDate: string;
+	/** A "YYYY-MM-DD" date, or null to clear it (removes the issue from the calendar). */
+	dueDate: string | null;
 }): Promise<void> {
 	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
 		params.accessToken,
@@ -169,4 +188,48 @@ export async function updateIssueDueDate(params: {
 	if (!data.issueUpdate.success) {
 		throw new Error("Linear did not accept the due date update");
 	}
+}
+
+const UPDATE_LABELS_MUTATION = `
+mutation UpdateLabels($id: String!, $labelIds: [String!]) {
+  issueUpdate(id: $id, input: { labelIds: $labelIds }) {
+    success
+  }
+}`;
+
+// Note: issueUpdate replaces the entire label set. Callers must pass the full
+// desired list (the modal merges kept non-namespace labels with edited ones).
+export async function updateIssueLabels(params: {
+	accessToken: string;
+	issueId: string;
+	labelIds: string[];
+}): Promise<void> {
+	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
+		params.accessToken,
+		UPDATE_LABELS_MUTATION,
+		{ id: params.issueId, labelIds: params.labelIds },
+	);
+	if (!data.issueUpdate.success) {
+		throw new Error("Linear did not accept the label update");
+	}
+}
+
+const ISSUE_DETAIL_QUERY = `
+query IssueDetail($id: String!) {
+  issue(id: $id) {
+    id
+    description
+  }
+}`;
+
+export async function fetchIssueDetail(
+	accessToken: string,
+	issueId: string,
+): Promise<{ description: string | null }> {
+	const data = await linearGraphQL<{ issue: { id: string; description: string | null } }>(
+		accessToken,
+		ISSUE_DETAIL_QUERY,
+		{ id: issueId },
+	);
+	return { description: data.issue.description };
 }

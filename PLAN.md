@@ -189,6 +189,23 @@ app/
 6. **Custom views** — localStorage CRUD, view switcher.
 7. **Polish & perf pass** — adjacent-month prefetch, memoization audit, empty/
    loading/error states, toasts.
+8. ✅ **Issue detail modal** — click a card to open a dialog with full title,
+   ticket number, lazy-loaded description, assignee, priority (display), and
+   tags. Edit due date (mantle Calendar → optimistic `issueUpdate`), **clear**
+   the due date (removes it from the calendar), and con/ tags (checkbox list;
+   merges with kept non-namespace labels so nothing is wiped). The date editor
+   supersedes the need to drag across months.
+
+   Notes from real-data fixes:
+   - mantle component utilities only generate once `app.css` adds
+     `@source "../node_modules/@ngrok/mantle/dist"` — without it, dialogs and
+     popovers render invisibly.
+   - `con/` labels are team-scoped and can duplicate across teams (e.g.
+     `con/web` in GTM and Content). `/api/labels` groups by name (carrying all
+     ids + a per-team id), so the picker shows one row and the modal applies the
+     team-correct label.
+   - Calendar shows only issues with a dueDate in the visible window; queries
+     refetch on window focus so Linear edits surface without a manual reload.
 
 ## Resolved decisions
 

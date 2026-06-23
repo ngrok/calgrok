@@ -6,6 +6,8 @@ export type CalendarIssue = {
 	/** TimelessDate, "YYYY-MM-DD". Treated as the publish date. */
 	dueDate: string;
 	url: string;
+	priority: number;
+	priorityLabel: string;
 	state: { id: string; name: string; color: string; type: string };
 	assignee: {
 		id: string;
@@ -18,7 +20,17 @@ export type CalendarIssue = {
 	team: { id: string; key: string; name: string };
 };
 
-export type LinearLabel = { id: string; name: string; color: string };
+// A label as the picker uses it: same display name may map to several Linear
+// labels (the same `con/x` defined separately per team), so we carry all ids
+// plus a per-team id for applying the right one to an issue.
+export type LabelOption = {
+	name: string;
+	color: string;
+	/** All label ids sharing this display name (used for filtering). */
+	ids: string[];
+	/** teamId -> labelId, for applying the team-correct label to an issue. */
+	idByTeam: Record<string, string>;
+};
 
 export type IssuesQueryParams = {
 	/** Inclusive "YYYY-MM-DD". */

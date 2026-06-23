@@ -3,13 +3,13 @@ import { Checkbox } from "@ngrok/mantle/checkbox";
 import { Popover } from "@ngrok/mantle/popover";
 import { useState } from "react";
 import { DEFAULT_TEAM_IDS, TEAMS } from "~/lib/teams";
-import type { LinearLabel } from "./types";
+import type { LabelOption } from "./types";
 
 export type CalendarFilters = {
 	teamIds: string[];
 	labelIds: string[];
 	toggleTeam: (id: string) => void;
-	toggleLabel: (id: string) => void;
+	toggleLabelGroup: (ids: string[]) => void;
 	clearLabels: () => void;
 };
 
@@ -20,14 +20,22 @@ export function useCalendarFilters(): CalendarFilters {
 	function toggleTeam(id: string) {
 		setTeamIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
 	}
-	function toggleLabel(id: string) {
-		setLabelIds((prev) => (prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]));
+	// A label name can map to several ids (same `con/x` across teams); toggle them
+	// together.
+	function toggleLabelGroup(ids: string[]) {
+		setLabelIds((prev) => {
+			const allPresent = ids.every((id) => prev.includes(id));
+			if (allPresent) {
+				return prev.filter((id) => !ids.includes(id));
+			}
+			return [...new Set([...prev, ...ids])];
+		});
 	}
 	function clearLabels() {
 		setLabelIds([]);
 	}
 
-	return { teamIds, labelIds, toggleTeam, toggleLabel, clearLabels };
+	return { teamIds, labelIds, toggleTeam, toggleLabelGroup, clearLabels };
 }
 
 export function FilterBar({
@@ -35,16 +43,20 @@ export function FilterBar({
 	labelIds,
 	labels,
 	onToggleTeam,
-	onToggleLabel,
+	onToggleLabelGroup,
 	onClearLabels,
 }: {
 	teamIds: string[];
 	labelIds: string[];
-	labels: LinearLabel[];
+	labels: LabelOption[];
 	onToggleTeam: (id: string) => void;
-	onToggleLabel: (id: string) => void;
+	onToggleLabelGroup: (ids: string[]) => void;
 	onClearLabels: () => void;
 }) {
+	const selectedCount = labels.filter((option) =>
+		option.ids.some((id) => labelIds.includes(id)),
+	).length;
+
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<div className="flex items-center gap-1">
@@ -67,13 +79,13 @@ export function FilterBar({
 			<Popover.Root>
 				<Popover.Trigger asChild>
 					<Button type="button" appearance="outlined">
-						Labels{labelIds.length > 0 ? ` (${labelIds.length})` : ""}
+						Labels{selectedCount > 0 ? ` (${selectedCount})` : ""}
 					</Button>
 				</Popover.Trigger>
 				<Popover.Content className="z-50 flex max-h-80 w-64 flex-col gap-1 overflow-auto rounded-md border border-card bg-card p-2 text-strong shadow-lg">
 					<div className="flex items-center justify-between px-1 pb-1">
 						<span className="text-xs font-medium text-muted">Filter by label</span>
-						{labelIds.length > 0 ? (
+						{selectedCount > 0 ? (
 							<button
 								type="button"
 								className="text-xs text-muted underline hover:text-strong"
@@ -87,20 +99,20 @@ export function FilterBar({
 					{labels.length === 0 ? (
 						<p className="px-1 text-xs text-muted">No labels found.</p>
 					) : (
-						labels.map((label) => (
+						labels.map((option) => (
 							<label
-								key={label.id}
+								key={option.name}
 								className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card"
 							>
 								<Checkbox
-									checked={labelIds.includes(label.id)}
-									onChange={() => onToggleLabel(label.id)}
+									checked={option.ids.some((id) => labelIds.includes(id))}
+									onChange={() => onToggleLabelGroup(option.ids)}
 								/>
 								<span
 									className="size-2 shrink-0 rounded-full"
-									style={{ backgroundColor: label.color }}
+									style={{ backgroundColor: option.color }}
 								/>
-								<span className="truncate text-sm text-strong">{label.name}</span>
+								<span className="truncate text-sm text-strong">{option.name}</span>
 							</label>
 						))
 					)}

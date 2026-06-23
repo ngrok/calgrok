@@ -21,6 +21,8 @@ describe("groupIssuesByDueDate", () => {
 			title: `Issue ${id}`,
 			dueDate,
 			url: "https://linear.app/x",
+			priority: 0,
+			priorityLabel: "No priority",
 			state: { id: "s", name: "Todo", color: "#fff", type: "unstarted" },
 			assignee: null,
 			labels: [],
