@@ -1,5 +1,27 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Toast, makeToast } from "@ngrok/mantle/toast";
+import {
+	keepPreviousData,
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import type { CalendarIssue, IssuesQueryParams, LabelOption } from "./types";
+
+function rollbackTo(
+	queryClient: QueryClient,
+	previous: [readonly unknown[], CalendarIssue[] | undefined][] | undefined,
+	message: string,
+) {
+	for (const [key, data] of previous ?? []) {
+		queryClient.setQueryData(key, data);
+	}
+	makeToast(
+		<Toast.Root priority="danger">
+			<Toast.Message>{message}</Toast.Message>
+		</Toast.Root>,
+	);
+}
 
 const ROOT = "calendar";
 
@@ -41,6 +63,8 @@ export function useCalendarIssues(params: IssuesQueryParams) {
 		queryFn: () => fetchIssues(params),
 		// No teams selected → nothing to show; skip the request entirely.
 		enabled: (params.teamIds?.length ?? 0) > 0,
+		// Keep showing the current month while the next one loads (no empty flash).
+		placeholderData: keepPreviousData,
 	});
 }
 
@@ -110,9 +134,11 @@ export function useUpdateDueDate() {
 			return { previous };
 		},
 		onError: (_error, _vars, context) => {
-			for (const [key, data] of context?.previous ?? []) {
-				queryClient.setQueryData(key, data);
-			}
+			rollbackTo(
+				queryClient,
+				context?.previous,
+				"We couldn't save that change — it's been reverted.",
+			);
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries(issuesQueryFilter);
@@ -149,9 +175,11 @@ export function useClearDueDate() {
 			return { previous };
 		},
 		onError: (_error, _vars, context) => {
-			for (const [key, data] of context?.previous ?? []) {
-				queryClient.setQueryData(key, data);
-			}
+			rollbackTo(
+				queryClient,
+				context?.previous,
+				"We couldn't save that change — it's been reverted.",
+			);
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries(issuesQueryFilter);
@@ -192,9 +220,11 @@ export function useUpdateLabels() {
 			return { previous };
 		},
 		onError: (_error, _vars, context) => {
-			for (const [key, data] of context?.previous ?? []) {
-				queryClient.setQueryData(key, data);
-			}
+			rollbackTo(
+				queryClient,
+				context?.previous,
+				"We couldn't save that change — it's been reverted.",
+			);
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries(issuesQueryFilter);

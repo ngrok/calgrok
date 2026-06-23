@@ -1,3 +1,4 @@
+import { Toaster } from "@ngrok/mantle/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -24,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="bg-body text-strong">
 				{children}
+				<Toaster />
 				<ScrollRestoration />
 				<Scripts />
 			</body>

@@ -12,7 +12,7 @@ import { Button } from "@ngrok/mantle/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { addMonths, format, isSameDay, isSameMonth, startOfMonth } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	groupIssuesByDueDate,
 	monthGridDays,
@@ -25,6 +25,9 @@ import { IssueCard } from "./issue-card";
 import { IssueDetailModal } from "./issue-detail-modal";
 import { prefetchCalendarIssues, useCalendarIssues, useUpdateDueDate } from "./queries";
 import type { CalendarIssue } from "./types";
+
+// Stable empty array so memoized DayCells for empty days don't re-render.
+const NO_ISSUES: CalendarIssue[] = [];
 
 // Render a placeholder until mounted so the date-dependent grid doesn't differ
 // between server and first client render (avoids hydration mismatch), and so
@@ -67,6 +70,7 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 		() => issues.find((issue) => issue.id === selectedIssueId) ?? null,
 		[issues, selectedIssueId],
 	);
+	const handleOpenIssue = useCallback((issue: CalendarIssue) => setSelectedIssueId(issue.id), []);
 	// Require a small drag distance so clicking the issue/project links still works.
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -152,10 +156,10 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 							<DayCell
 								key={day.toISOString()}
 								date={day}
-								issues={byDate.get(toISODate(day)) ?? []}
+								issues={byDate.get(toISODate(day)) ?? NO_ISSUES}
 								isCurrentMonth={isSameMonth(day, month)}
 								isToday={isSameDay(day, today)}
-								onOpenIssue={(issue) => setSelectedIssueId(issue.id)}
+								onOpenIssue={handleOpenIssue}
 							/>
 						))}
 					</div>

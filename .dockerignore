@@ -1,0 +1,11 @@
+node_modules
+/build
+/.react-router
+.env
+.env.*
+!.env.example
+.git
+.context
+*.local
+*.log
+.DS_Store

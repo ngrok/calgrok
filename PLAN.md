@@ -187,8 +187,10 @@ app/
    rollback on failure. Drag activates after 5px so issue/project links stay
    clickable.
 6. **Custom views** — localStorage CRUD, view switcher.
-7. **Polish & perf pass** — adjacent-month prefetch, memoization audit, empty/
-   loading/error states, toasts.
+7. ✅ **Polish & perf pass** — error toasts on failed edits (with rollback),
+   keep-previous-data on month nav (no empty flash), memoized cards, and a
+   "+N more" per-day overflow cap. (Adjacent-month prefetch landed in m3.)
+   Saved views (originally m6) deferred.
 8. ✅ **Issue detail modal** — click a card to open a dialog with full title,
    ticket number, lazy-loaded description, assignee, priority (display), and
    tags. Edit due date (mantle Calendar → optimistic `issueUpdate`), **clear**

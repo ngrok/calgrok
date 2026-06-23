@@ -1,5 +1,6 @@
 import { cx } from "@ngrok/mantle/cx";
 import { ArrowSquareOut, FolderOpen } from "@phosphor-icons/react";
+import { memo } from "react";
 import type { CalendarIssue } from "./types";
 
 function initialsOf(name: string): string {
@@ -11,7 +12,9 @@ function initialsOf(name: string): string {
 
 const MAX_LABEL_DOTS = 3;
 
-export function IssueCard({ issue }: { issue: CalendarIssue }) {
+// Memoized: issue refs are stable across renders (from the query cache), so
+// non-dragging cards skip re-rendering during a drag.
+export const IssueCard = memo(function IssueCard({ issue }: { issue: CalendarIssue }) {
 	const extraLabels = issue.labels.length - MAX_LABEL_DOTS;
 
 	return (
@@ -83,4 +86,4 @@ export function IssueCard({ issue }: { issue: CalendarIssue }) {
 			</div>
 		</div>
 	);
-}
+});
