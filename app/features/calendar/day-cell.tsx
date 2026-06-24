@@ -32,7 +32,7 @@ export const DayCell = memo(function DayCell({
 		<div
 			ref={setNodeRef}
 			className={cx(
-				"flex min-h-28 flex-col gap-1 border-b border-r border-card p-1",
+				"flex min-h-28 flex-col gap-1.5 border-b border-r border-card p-1.5",
 				isOver && "bg-filled-accent/10 ring-1 ring-inset ring-accent-500",
 			)}
 		>
@@ -49,7 +49,7 @@ export const DayCell = memo(function DayCell({
 				</span>
 			</div>
 
-			<div className="flex flex-col gap-1">
+			<div className="flex flex-col gap-1.5">
 				{visible.map((issue) => (
 					<DraggableIssueCard key={issue.id} issue={issue} onOpen={onOpenIssue} />
 				))}

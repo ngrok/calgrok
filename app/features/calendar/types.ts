@@ -22,6 +22,17 @@ export type CalendarIssue = {
 	parent: { id: string } | null;
 };
 
+// A workflow state (status) as the picker uses it. `type` is Linear's category
+// (backlog/unstarted/started/completed/cancelled); `position` orders them within
+// a team the way Linear's own status menu does.
+export type WorkflowState = {
+	id: string;
+	name: string;
+	color: string;
+	type: string;
+	position: number;
+};
+
 // A label as the picker uses it: same display name may map to several Linear
 // labels (the same `con/x` defined separately per team), so we carry all ids
 // plus a per-team id for applying the right one to an issue.

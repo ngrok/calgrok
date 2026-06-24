@@ -30,7 +30,7 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 	);
 
 	return (
-		<div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-4 p-4 sm:p-6">
+		<div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 p-4 sm:p-6">
 			<header className="flex items-center justify-between gap-2">
 				<div>
 					<h1 className="text-xl font-medium text-strong">calgrok</h1>
