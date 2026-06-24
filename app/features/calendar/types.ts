@@ -18,6 +18,8 @@ export type CalendarIssue = {
 	labels: { id: string; name: string; color: string }[];
 	project: { id: string; name: string; url: string } | null;
 	team: { id: string; key: string; name: string };
+	/** Present when the issue is a sub-task. */
+	parent: { id: string } | null;
 };
 
 // A label as the picker uses it: same display name may map to several Linear

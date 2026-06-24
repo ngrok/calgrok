@@ -9,6 +9,7 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import { Button } from "@ngrok/mantle/button";
+import { cx } from "@ngrok/mantle/cx";
 import { useQueryClient } from "@tanstack/react-query";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { addMonths, format, isSameDay, isSameMonth, startOfMonth } from "date-fns";
@@ -25,6 +26,7 @@ import { IssueCard } from "./issue-card";
 import { IssueDetailModal } from "./issue-detail-modal";
 import { prefetchCalendarIssues, useCalendarIssues, useUpdateDueDate } from "./queries";
 import type { CalendarIssue } from "./types";
+import type { ViewOptions } from "./view-options";
 
 // Stable empty array so memoized DayCells for empty days don't re-render.
 const NO_ISSUES: CalendarIssue[] = [];
@@ -38,7 +40,15 @@ function useHydrated(): boolean {
 	return hydrated;
 }
 
-export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: string[] }) {
+export function MonthGrid({
+	teamIds,
+	labelIds,
+	options,
+}: {
+	teamIds: string[];
+	labelIds: string[];
+	options: ViewOptions;
+}) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
 	const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -55,8 +65,30 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 	);
 
 	const { data: issues = [], isLoading, isError } = useCalendarIssues(params);
-	const byDate = useMemo(() => groupIssuesByDueDate(issues), [issues]);
-	const days = useMemo(() => monthGridDays(month), [month]);
+
+	// View toggles applied client-side (instant, no refetch).
+	const visibleIssues = useMemo(
+		() =>
+			issues.filter(
+				(issue) =>
+					(options.showCompleted || issue.state.type !== "completed") &&
+					(options.showSubtasks || !issue.parent),
+			),
+		[issues, options.showCompleted, options.showSubtasks],
+	);
+	const byDate = useMemo(() => groupIssuesByDueDate(visibleIssues), [visibleIssues]);
+
+	const allDays = useMemo(() => monthGridDays(month), [month]);
+	const days = useMemo(
+		() =>
+			options.showWeekends
+				? allDays
+				: allDays.filter((day) => day.getDay() !== 0 && day.getDay() !== 6),
+		[allDays, options.showWeekends],
+	);
+	const weekdayLabels = options.showWeekends ? WEEKDAY_LABELS : WEEKDAY_LABELS.slice(0, 5);
+	const gridColsClass = options.showWeekends ? "grid-cols-7" : "grid-cols-5";
+
 	const today = useMemo(() => new Date(), []);
 	const noTeams = teamIds.length === 0;
 
@@ -136,8 +168,8 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 				</div>
 			</header>
 
-			<div className="grid grid-cols-7">
-				{WEEKDAY_LABELS.map((label) => (
+			<div className={cx("grid", gridColsClass)}>
+				{weekdayLabels.map((label) => (
 					<div key={label} className="px-1 pb-1 text-xs font-medium text-muted">
 						{label}
 					</div>
@@ -151,7 +183,7 @@ export function MonthGrid({ teamIds, labelIds }: { teamIds: string[]; labelIds: 
 					onDragStart={handleDragStart}
 					onDragEnd={handleDragEnd}
 				>
-					<div className="grid grid-cols-7 border-l border-t border-card">
+					<div className={cx("grid border-l border-t border-card", gridColsClass)}>
 						{days.map((day) => (
 							<DayCell
 								key={day.toISOString()}

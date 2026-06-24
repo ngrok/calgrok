@@ -16,6 +16,7 @@ const issue: CalendarIssue = {
 	labels: [{ id: "l1", name: "Blog", color: "#5e6ad2" }],
 	project: { id: "p1", name: "Q3 Content", url: "https://linear.app/ngrok/project/q3" },
 	team: { id: "t1", key: "GTM", name: "GTM" },
+	parent: null,
 };
 
 describe("IssueCard", () => {

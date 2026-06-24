@@ -20,6 +20,7 @@ const issue: CalendarIssue = {
 	labels: [],
 	project: null,
 	team: { id: "t1", key: "GTM", name: "GTM" },
+	parent: null,
 };
 
 afterEach(() => vi.unstubAllGlobals());

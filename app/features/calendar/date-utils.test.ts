@@ -28,6 +28,7 @@ describe("groupIssuesByDueDate", () => {
 			labels: [],
 			project: null,
 			team: { id: "t", key: "GTM", name: "GTM" },
+			parent: null,
 		});
 		const grouped = groupIssuesByDueDate([
 			make("1", "2026-06-23"),

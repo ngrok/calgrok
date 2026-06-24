@@ -5,9 +5,11 @@ import { CONTENT_TAG_NAMES } from "~/lib/content-tags";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthGrid } from "./month-grid";
 import { useLabels } from "./queries";
+import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
 export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
 	const filters = useCalendarFilters();
+	const { options, toggle } = useViewOptions();
 	const { data: allLabels = [] } = useLabels();
 
 	// The label filter only offers the content types, and the calendar is always
@@ -41,16 +43,22 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 				</Form>
 			</header>
 
-			<FilterBar
-				teamIds={filters.teamIds}
-				labelIds={filters.labelIds}
-				labels={contentLabels}
-				onToggleTeam={filters.toggleTeam}
-				onToggleLabelGroup={filters.toggleLabelGroup}
-				onClearLabels={filters.clearLabels}
-			/>
+			<div className="flex flex-wrap items-center gap-2">
+				<FilterBar
+					teamIds={filters.teamIds}
+					labelIds={filters.labelIds}
+					labels={contentLabels}
+					onToggleTeam={filters.toggleTeam}
+					onToggleLabelGroup={filters.toggleLabelGroup}
+					onClearLabels={filters.clearLabels}
+				/>
+				<div className="ml-auto flex items-center gap-2">
+					<ViewOptionsMenu options={options} onToggle={toggle} />
+					<RefreshButton />
+				</div>
+			</div>
 
-			<MonthGrid teamIds={filters.teamIds} labelIds={effectiveLabelIds} />
+			<MonthGrid teamIds={filters.teamIds} labelIds={effectiveLabelIds} options={options} />
 		</div>
 	);
 }

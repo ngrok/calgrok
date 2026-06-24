@@ -58,6 +58,7 @@ query CalendarIssues($filter: IssueFilter!, $first: Int!, $after: String) {
       labels { nodes { id name color } }
       project { id name url }
       team { id key name }
+      parent { id }
     }
   }
 }`;

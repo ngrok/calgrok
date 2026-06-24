@@ -18,6 +18,7 @@ const issue: CalendarIssue = {
 	labels: [],
 	project: null,
 	team: { id: "t", key: "GTM", name: "GTM" },
+	parent: null,
 };
 
 describe("DraggableIssueCard", () => {
