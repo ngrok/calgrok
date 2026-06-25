@@ -1,7 +1,6 @@
 import { Button } from "@ngrok/mantle/button";
 import { useMemo } from "react";
 import { Form } from "react-router";
-import { CONTENT_TAG_NAMES } from "~/lib/content-tags";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthGrid } from "./month-grid";
 import { useLabels } from "./queries";
@@ -10,14 +9,9 @@ import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
 	const filters = useCalendarFilters();
 	const { options, toggle } = useViewOptions();
-	const { data: allLabels = [] } = useLabels();
-
-	// The label filter only offers the content types, and the calendar is always
-	// scoped to them.
-	const contentLabels = useMemo(
-		() => allLabels.filter((option) => CONTENT_TAG_NAMES.includes(option.name.toLowerCase())),
-		[allLabels],
-	);
+	// Every "con/" label is offered automatically; the API already scopes labels
+	// to that namespace, so new ones appear without a code change.
+	const { data: contentLabels = [] } = useLabels();
 
 	// Effective filter: the user's selection, or — when nothing is selected — all
 	// content-type ids, so only content-tagged issues ever show.
