@@ -7,6 +7,7 @@ import { ArrowSquareOut, CalendarBlank, Check, FolderOpen, X } from "@phosphor-i
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
 import { toISODate } from "./date-utils";
+import { PriorityIcon } from "./priority-icon";
 import {
 	useClearDueDate,
 	useIssueDescription,
@@ -16,6 +17,7 @@ import {
 	useUpdateState,
 	useWorkflowStates,
 } from "./queries";
+import { StatusIcon } from "./status-icon";
 import type { CalendarIssue } from "./types";
 
 function Avatar({ assignee }: { assignee: NonNullable<CalendarIssue["assignee"]> }) {
@@ -98,7 +100,8 @@ export function IssueDetailModal({
 							) : (
 								<span className="text-muted">Unassigned</span>
 							)}
-							<span className="inline-flex items-center rounded-full border border-card px-2 py-0.5 text-xs text-muted">
+							<span className="inline-flex items-center gap-1.5 text-muted">
+								<PriorityIcon priority={issue.priority} className="size-4" />
 								{issue.priorityLabel}
 							</span>
 							{issue.project ? (
@@ -123,9 +126,10 @@ export function IssueDetailModal({
 							<Popover.Root open={stateOpen} onOpenChange={setStateOpen}>
 								<Popover.Trigger asChild>
 									<Button type="button" appearance="outlined">
-										<span
-											className="size-2.5 shrink-0 rounded-full"
-											style={{ backgroundColor: issue.state.color }}
+										<StatusIcon
+											type={issue.state.type}
+											color={issue.state.color}
+											className="size-4"
 										/>
 										{issue.state.name}
 									</Button>
@@ -154,10 +158,7 @@ export function IssueDetailModal({
 													setStateOpen(false);
 												}}
 											>
-												<span
-													className="size-2.5 shrink-0 rounded-full"
-													style={{ backgroundColor: state.color }}
-												/>
+												<StatusIcon type={state.type} color={state.color} className="size-4" />
 												<span className="flex-1 truncate">{state.name}</span>
 												{state.id === issue.state.id ? (
 													<Check className="size-4 shrink-0 text-muted" />

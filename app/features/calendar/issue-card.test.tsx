@@ -33,9 +33,11 @@ describe("IssueCard", () => {
 		);
 	});
 
-	test("shows a status badge with the state name", () => {
+	test("conveys the workflow state through an accessible status icon", () => {
 		render(<IssueCard issue={issue} />);
-		expect(screen.getByTitle("Status: In Progress")).toHaveTextContent("In Progress");
+		// The status is shown as a Linear-style glyph (no text label on the card);
+		// its accessible name carries the state name.
+		expect(screen.getByRole("img", { name: "In Progress" })).toBeInTheDocument();
 	});
 
 	test("omits the project link when there is no project", () => {

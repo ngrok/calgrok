@@ -249,7 +249,7 @@ export const MonthList = forwardRef<
 						<div ref={topSentinelRef} className="h-px" />
 						<div
 							className={cx(
-								"sticky top-0 z-20 grid border-b border-card bg-base py-2",
+								"sticky top-0 z-20 grid border-b border-card-muted bg-base py-2",
 								gridColsClass,
 							)}
 						>
@@ -260,7 +260,7 @@ export const MonthList = forwardRef<
 								</div>
 							))}
 						</div>
-						<div className="border-r border-card">
+						<div className="border-r border-card-muted">
 							{months.map((month) => (
 								<MonthSection
 									key={toISODate(month)}

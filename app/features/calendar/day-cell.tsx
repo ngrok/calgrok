@@ -32,7 +32,8 @@ export const DayCell = memo(function DayCell({
 		<div
 			ref={setNodeRef}
 			className={cx(
-				"flex min-h-28 flex-col gap-1.5 border-b border-l border-card p-1.5",
+				"flex min-h-28 flex-col gap-1.5 border-b border-l border-card-muted p-1.5 transition-colors",
+				!isCurrentMonth && "bg-card-hover/40",
 				isToday && "bg-filled-accent/5",
 				isOver && "bg-filled-accent/10 ring-1 ring-inset ring-accent-500",
 			)}
@@ -40,7 +41,7 @@ export const DayCell = memo(function DayCell({
 			<div className="flex justify-end">
 				<span
 					className={cx(
-						"flex size-5 items-center justify-center rounded-full text-xs",
+						"flex size-5 items-center justify-center rounded-full text-sm",
 						isToday && "bg-filled-accent font-medium text-on-filled",
 						!isToday && !isCurrentMonth && "text-muted",
 						!isToday && isCurrentMonth && "text-strong",
