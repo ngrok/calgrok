@@ -19,12 +19,23 @@ export const IssueCard = memo(function IssueCard({ issue }: { issue: CalendarIss
 
 	return (
 		<div
-			className="group/card flex flex-col gap-1 rounded border border-card bg-card px-1.5 py-1 text-left"
+			className="group/card flex flex-col gap-1.5 rounded border border-card bg-card px-2 py-1.5 text-left"
 			style={{ borderLeftColor: issue.state.color, borderLeftWidth: 3 }}
 		>
-			<p className="truncate text-xs font-medium text-strong" title={issue.title}>
+			<p className="truncate text-sm font-medium text-strong" title={issue.title}>
 				{issue.title}
 			</p>
+
+			<span
+				className="inline-flex max-w-full items-center gap-1.5 self-start rounded-full border border-card px-2 py-0.5 text-[10px] leading-tight text-muted"
+				title={`Status: ${issue.state.name}`}
+			>
+				<span
+					className="size-1.5 shrink-0 rounded-full"
+					style={{ backgroundColor: issue.state.color }}
+				/>
+				<span className="truncate">{issue.state.name}</span>
+			</span>
 
 			<div className="flex items-center justify-between gap-1">
 				<div className="flex min-w-0 items-center gap-1">
