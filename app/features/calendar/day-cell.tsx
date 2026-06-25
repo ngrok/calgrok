@@ -32,7 +32,8 @@ export const DayCell = memo(function DayCell({
 		<div
 			ref={setNodeRef}
 			className={cx(
-				"flex min-h-28 flex-col gap-1.5 border-b border-r border-card p-1.5",
+				"flex min-h-28 flex-col gap-1.5 border-b border-l border-card p-1.5",
+				isToday && "bg-filled-accent/5",
 				isOver && "bg-filled-accent/10 ring-1 ring-inset ring-accent-500",
 			)}
 		>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { groupIssuesByDueDate, monthGridDays, toISODate } from "./date-utils";
+import { groupIssuesByDueDate, monthGridDays, monthOwnedWeeks, toISODate } from "./date-utils";
 import type { CalendarIssue } from "./types";
 
 describe("monthGridDays", () => {
@@ -10,6 +10,40 @@ describe("monthGridDays", () => {
 		const iso = days.map(toISODate);
 		expect(iso).toContain("2026-06-01");
 		expect(iso).toContain("2026-06-30");
+	});
+});
+
+describe("monthOwnedWeeks", () => {
+	test("every owned week is a full Mon→Sun run", () => {
+		const weeks = monthOwnedWeeks(new Date(2026, 6, 1)); // July 2026
+		for (const week of weeks) {
+			expect(week).toHaveLength(7);
+			expect(week[0]?.getDay()).toBe(1); // Monday
+			expect(week[6]?.getDay()).toBe(0); // Sunday
+		}
+	});
+
+	test("only weeks whose Monday falls in the month are owned", () => {
+		// July 2026: the 1st is a Wednesday, so the week of Mon Jun 29 is owned by
+		// June, not July. July's first owned week starts Mon Jul 6.
+		const july = monthOwnedWeeks(new Date(2026, 6, 1));
+		expect(toISODate(july[0]?.[0] as Date)).toBe("2026-07-06");
+
+		const june = monthOwnedWeeks(new Date(2026, 5, 1));
+		const lastJuneWeek = june[june.length - 1] as Date[];
+		expect(toISODate(lastJuneWeek[0] as Date)).toBe("2026-06-29");
+		// That boundary week carries July's leading days as trailing cells.
+		expect(lastJuneWeek.map(toISODate)).toContain("2026-07-01");
+	});
+
+	test("adjacent months tile with no gap and no duplicated week", () => {
+		const june = monthOwnedWeeks(new Date(2026, 5, 1));
+		const july = monthOwnedWeeks(new Date(2026, 6, 1));
+		const lastJuneMonday = (june[june.length - 1] as Date[])[0] as Date;
+		const firstJulyMonday = (july[0] as Date[])[0] as Date;
+		// Consecutive Mondays exactly 7 days apart: contiguous, never overlapping.
+		expect(toISODate(firstJulyMonday)).toBe("2026-07-06");
+		expect((firstJulyMonday.getTime() - lastJuneMonday.getTime()) / 86_400_000).toBe(7);
 	});
 });
 

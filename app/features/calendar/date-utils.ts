@@ -1,8 +1,10 @@
 import {
+	addDays,
 	eachDayOfInterval,
 	endOfMonth,
 	endOfWeek,
 	format,
+	isSameMonth,
 	startOfMonth,
 	startOfWeek,
 } from "date-fns";
@@ -25,6 +27,28 @@ export function monthGridRange(month: Date): { gridStart: Date; gridEnd: Date } 
 export function monthGridDays(month: Date): Date[] {
 	const { gridStart, gridEnd } = monthGridRange(month);
 	return eachDayOfInterval({ start: gridStart, end: gridEnd });
+}
+
+/**
+ * The weeks "owned" by a month, so the endless scroll never renders a week
+ * twice. A week belongs to the month that contains its Monday: a week
+ * straddling two months (e.g. Jun 29–Jul 5) is owned by the earlier month and
+ * shows the next month's days as muted trailing cells. Each entry is a full
+ * 7-day Mon→Sun array, so every rendered row stays column-aligned.
+ */
+export function monthOwnedWeeks(month: Date): Date[][] {
+	let monday = startOfWeek(startOfMonth(month), { weekStartsOn: WEEK_STARTS_ON });
+	// The first week's Monday may live in the previous month; that week is owned
+	// there, so skip ahead to the first Monday that actually falls in this month.
+	if (!isSameMonth(monday, month)) {
+		monday = addDays(monday, 7);
+	}
+	const weeks: Date[][] = [];
+	while (isSameMonth(monday, month)) {
+		weeks.push(Array.from({ length: 7 }, (_, i) => addDays(monday, i)));
+		monday = addDays(monday, 7);
+	}
+	return weeks;
 }
 
 export function toISODate(date: Date): string {

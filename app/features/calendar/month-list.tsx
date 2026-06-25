@@ -8,13 +8,14 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
-import { Button } from "@ngrok/mantle/button";
 import { cx } from "@ngrok/mantle/cx";
 import { useQueryClient } from "@tanstack/react-query";
 import { addMonths, startOfMonth } from "date-fns";
 import {
+	forwardRef,
 	useCallback,
 	useEffect,
+	useImperativeHandle,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -70,15 +71,17 @@ function useIssueById(id: string | null): CalendarIssue | null {
 	);
 }
 
-export function MonthList({
-	teamIds,
-	labelIds,
-	options,
-}: {
-	teamIds: string[];
-	labelIds: string[];
-	options: ViewOptions;
-}) {
+/** Imperative handle so the page header's "Today" button can scroll the list. */
+export type MonthListHandle = { scrollToToday: () => void };
+
+export const MonthList = forwardRef<
+	MonthListHandle,
+	{
+		teamIds: string[];
+		labelIds: string[];
+		options: ViewOptions;
+	}
+>(function MonthList({ teamIds, labelIds, options }, ref) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
 	const today = useMemo(() => new Date(), []);
@@ -98,7 +101,11 @@ export function MonthList({
 	// anchored when months are added above.
 	const prevScrollHeight = useRef<number | null>(null);
 
-	const gridColsClass = options.showWeekends ? "grid-cols-7" : "grid-cols-5";
+	// A fixed left gutter column (for the floating month label) plus the day
+	// columns. Months render their owned weeks into this template so they line up.
+	const gridColsClass = options.showWeekends
+		? "grid-cols-[4.5rem_repeat(7,minmax(0,1fr))]"
+		: "grid-cols-[4.5rem_repeat(5,minmax(0,1fr))]";
 	const weekdayLabels = options.showWeekends ? WEEKDAY_LABELS : WEEKDAY_LABELS.slice(0, 5);
 
 	const appendMonth = useCallback(() => {
@@ -134,6 +141,7 @@ export function MonthList({
 	const scrollToToday = useCallback(() => {
 		todayRef.current?.scrollIntoView({ block: "start" });
 	}, []);
+	useImperativeHandle(ref, () => ({ scrollToToday }), [scrollToToday]);
 
 	// Land on the current month on first paint.
 	const didInit = useRef(false);
@@ -230,12 +238,6 @@ export function MonthList({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex items-center justify-end pb-2">
-				<Button type="button" appearance="outlined" onClick={scrollToToday}>
-					Today
-				</Button>
-			</div>
-
 			{hydrated ? (
 				<DndContext
 					sensors={sensors}
@@ -245,26 +247,34 @@ export function MonthList({
 				>
 					<div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
 						<div ref={topSentinelRef} className="h-px" />
-						<div className={cx("sticky top-0 z-10 grid bg-body pb-1", gridColsClass)}>
+						<div
+							className={cx(
+								"sticky top-0 z-20 grid border-b border-card bg-base py-2",
+								gridColsClass,
+							)}
+						>
+							<div />
 							{weekdayLabels.map((label) => (
-								<div key={label} className="px-1 text-xs font-medium text-muted">
+								<div key={label} className="px-1 text-base font-medium text-muted">
 									{label}
 								</div>
 							))}
 						</div>
-						{months.map((month) => (
-							<MonthSection
-								key={toISODate(month)}
-								ref={toISODate(month) === currentMonthIso ? todayRef : undefined}
-								month={month}
-								teamIds={teamIds}
-								labelIds={labelIds}
-								options={options}
-								today={today}
-								gridColsClass={gridColsClass}
-								onOpenIssue={handleOpenIssue}
-							/>
-						))}
+						<div className="border-r border-card">
+							{months.map((month) => (
+								<MonthSection
+									key={toISODate(month)}
+									ref={toISODate(month) === currentMonthIso ? todayRef : undefined}
+									month={month}
+									teamIds={teamIds}
+									labelIds={labelIds}
+									options={options}
+									today={today}
+									gridColsClass={gridColsClass}
+									onOpenIssue={handleOpenIssue}
+								/>
+							))}
+						</div>
 						<div ref={bottomSentinelRef} className="h-px" />
 					</div>
 					<DragOverlay>
@@ -282,4 +292,4 @@ export function MonthList({
 			<IssueDetailModal issue={selectedIssue} onClose={() => setSelectedIssueId(null)} />
 		</div>
 	);
-}
+});
