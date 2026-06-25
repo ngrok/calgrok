@@ -6,7 +6,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import type { CalendarIssue, IssuesQueryParams, LabelOption } from "./types";
+import type { CalendarIssue, IssuesQueryParams, LabelOption, WorkflowState } from "./types";
 
 function rollbackTo(
 	queryClient: QueryClient,
@@ -83,6 +83,28 @@ export function useLabels() {
 		queryKey: [ROOT, "labels"] as const,
 		queryFn: fetchLabelsList,
 		staleTime: 5 * 60 * 1000, // labels change rarely
+	});
+}
+
+async function fetchWorkflowStates(teamId: string): Promise<WorkflowState[]> {
+	const res = await fetch(`/api/states?teamIds=${encodeURIComponent(teamId)}`, {
+		headers: { Accept: "application/json" },
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to load statuses (${res.status})`);
+	}
+	const json = (await res.json()) as { states: WorkflowState[] };
+	// Order the way Linear's own status menu does.
+	return json.states.sort((a, b) => a.position - b.position);
+}
+
+/** Workflow states (statuses) available for a team, for the status picker. */
+export function useWorkflowStates(teamId: string | null) {
+	return useQuery({
+		queryKey: [ROOT, "states", teamId] as const,
+		queryFn: () => fetchWorkflowStates(teamId as string),
+		enabled: Boolean(teamId),
+		staleTime: 5 * 60 * 1000, // workflow states change rarely
 	});
 }
 
@@ -217,6 +239,49 @@ export function useUpdateLabels() {
 			const previous = queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter);
 			queryClient.setQueriesData<CalendarIssue[]>(issuesQueryFilter, (old) =>
 				old?.map((issue) => (issue.id === issueId ? { ...issue, labels } : issue)),
+			);
+			return { previous };
+		},
+		onError: (_error, _vars, context) => {
+			rollbackTo(
+				queryClient,
+				context?.previous,
+				"We couldn't save that change — it's been reverted.",
+			);
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries(issuesQueryFilter);
+		},
+	});
+}
+
+async function postState(issueId: string, stateId: string): Promise<void> {
+	const res = await fetch("/api/issues", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ issueId, stateId }),
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to update status (${res.status})`);
+	}
+}
+
+/**
+ * Change an issue's status with an optimistic cache update: the badge/border
+ * recolor immediately, then we roll back if Linear rejects it. The caller passes
+ * the full new state so the cache reflects the right name and color at once.
+ */
+export function useUpdateState() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ issueId, state }: { issueId: string; state: CalendarIssue["state"] }) =>
+			postState(issueId, state.id),
+		onMutate: async ({ issueId, state }) => {
+			await queryClient.cancelQueries(issuesQueryFilter);
+			const previous = queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter);
+			queryClient.setQueriesData<CalendarIssue[]>(issuesQueryFilter, (old) =>
+				old?.map((issue) => (issue.id === issueId ? { ...issue, state } : issue)),
 			);
 			return { previous };
 		},

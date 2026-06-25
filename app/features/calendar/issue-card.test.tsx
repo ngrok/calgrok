@@ -33,6 +33,11 @@ describe("IssueCard", () => {
 		);
 	});
 
+	test("shows a status badge with the state name", () => {
+		render(<IssueCard issue={issue} />);
+		expect(screen.getByTitle("Status: In Progress")).toHaveTextContent("In Progress");
+	});
+
 	test("omits the project link when there is no project", () => {
 		render(<IssueCard issue={{ ...issue, project: null }} />);
 		expect(screen.queryByRole("link", { name: /open project/i })).not.toBeInTheDocument();

@@ -1,4 +1,4 @@
-import type { CalendarIssue } from "~/features/calendar/types";
+import type { CalendarIssue, WorkflowState } from "~/features/calendar/types";
 
 export type RawLabel = { id: string; name: string; color: string; teamId: string | null };
 
@@ -166,6 +166,70 @@ export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
 	}
 
 	return labels;
+}
+
+const WORKFLOW_STATES_QUERY = `
+query WorkflowStates($teamIds: [ID!]!, $first: Int!, $after: String) {
+  workflowStates(filter: { team: { id: { in: $teamIds } } }, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id name color type position team { id } }
+  }
+}`;
+
+type WorkflowStatesData = {
+	workflowStates: {
+		pageInfo: { hasNextPage: boolean; endCursor: string | null };
+		nodes: (WorkflowState & { team: { id: string } })[];
+	};
+};
+
+/** Workflow states (statuses) for the given teams, each carrying its team id. */
+export async function fetchWorkflowStates(
+	accessToken: string,
+	teamIds: string[],
+): Promise<(WorkflowState & { teamId: string })[]> {
+	const states: (WorkflowState & { teamId: string })[] = [];
+	let after: string | null = null;
+
+	for (let page = 0; page < 20; page++) {
+		const result: WorkflowStatesData = await linearGraphQL<WorkflowStatesData>(
+			accessToken,
+			WORKFLOW_STATES_QUERY,
+			{ teamIds, first: 250, after },
+		);
+		for (const node of result.workflowStates.nodes) {
+			const { team, ...state } = node;
+			states.push({ ...state, teamId: team.id });
+		}
+		if (!result.workflowStates.pageInfo.hasNextPage) {
+			break;
+		}
+		after = result.workflowStates.pageInfo.endCursor;
+	}
+
+	return states;
+}
+
+const UPDATE_STATE_MUTATION = `
+mutation UpdateState($id: String!, $stateId: String!) {
+  issueUpdate(id: $id, input: { stateId: $stateId }) {
+    success
+  }
+}`;
+
+export async function updateIssueState(params: {
+	accessToken: string;
+	issueId: string;
+	stateId: string;
+}): Promise<void> {
+	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
+		params.accessToken,
+		UPDATE_STATE_MUTATION,
+		{ id: params.issueId, stateId: params.stateId },
+	);
+	if (!data.issueUpdate.success) {
+		throw new Error("Linear did not accept the status update");
+	}
 }
 
 const UPDATE_DUE_DATE_MUTATION = `

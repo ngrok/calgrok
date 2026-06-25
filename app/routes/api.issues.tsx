@@ -2,6 +2,7 @@ import {
 	fetchCalendarIssues,
 	updateIssueDueDate,
 	updateIssueLabels,
+	updateIssueState,
 } from "~/lib/linear-graphql.server";
 import { getLinearAuth } from "~/lib/linear.server";
 import { DEFAULT_TEAM_IDS } from "~/lib/teams";
@@ -52,6 +53,7 @@ export async function action({ request }: Route.ActionArgs) {
 		issueId?: string;
 		dueDate?: string | null;
 		labelIds?: string[];
+		stateId?: string;
 	};
 	if (!body.issueId) {
 		throw new Response("Missing 'issueId'", { status: 400 });
@@ -60,8 +62,9 @@ export async function action({ request }: Route.ActionArgs) {
 	// dueDate present (string to set, null to clear) vs. absent.
 	const hasDueDate = "dueDate" in body;
 	const hasLabels = Array.isArray(body.labelIds);
-	if (!hasDueDate && !hasLabels) {
-		throw new Response("Provide 'dueDate' and/or 'labelIds'", { status: 400 });
+	const hasState = typeof body.stateId === "string";
+	if (!hasDueDate && !hasLabels && !hasState) {
+		throw new Response("Provide 'dueDate', 'labelIds', and/or 'stateId'", { status: 400 });
 	}
 
 	if (hasDueDate) {
@@ -76,6 +79,13 @@ export async function action({ request }: Route.ActionArgs) {
 			accessToken: auth.accessToken,
 			issueId: body.issueId,
 			labelIds: body.labelIds as string[],
+		});
+	}
+	if (hasState) {
+		await updateIssueState({
+			accessToken: auth.accessToken,
+			issueId: body.issueId,
+			stateId: body.stateId as string,
 		});
 	}
 

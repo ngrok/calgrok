@@ -3,7 +3,7 @@ import { Calendar } from "@ngrok/mantle/calendar";
 import { Checkbox } from "@ngrok/mantle/checkbox";
 import { Dialog } from "@ngrok/mantle/dialog";
 import { Popover } from "@ngrok/mantle/popover";
-import { ArrowSquareOut, CalendarBlank, FolderOpen, X } from "@phosphor-icons/react";
+import { ArrowSquareOut, CalendarBlank, Check, FolderOpen, X } from "@phosphor-icons/react";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
 import { toISODate } from "./date-utils";
@@ -13,6 +13,8 @@ import {
 	useLabels,
 	useUpdateDueDate,
 	useUpdateLabels,
+	useUpdateState,
+	useWorkflowStates,
 } from "./queries";
 import type { CalendarIssue } from "./types";
 
@@ -39,7 +41,10 @@ export function IssueDetailModal({
 	const updateDueDate = useUpdateDueDate();
 	const clearDueDate = useClearDueDate();
 	const updateLabels = useUpdateLabels();
+	const updateState = useUpdateState();
+	const { data: states = [] } = useWorkflowStates(issue?.team.id ?? null);
 	const [dateOpen, setDateOpen] = useState(false);
+	const [stateOpen, setStateOpen] = useState(false);
 
 	// Only labels that exist in this issue's team can be applied to it.
 	const applicableLabels = issue
@@ -77,8 +82,8 @@ export function IssueDetailModal({
 				<Dialog.Content className="max-w-lg">
 					<Dialog.Header>
 						<Dialog.Title className="flex items-baseline gap-2">
-							<span className="shrink-0 text-xs font-normal text-muted">{issue.identifier}</span>
 							<span className="truncate">{issue.title}</span>
+							<span className="shrink-0 text-xs font-normal text-muted">{issue.identifier}</span>
 						</Dialog.Title>
 						<Dialog.CloseIconButton />
 					</Dialog.Header>
@@ -110,6 +115,59 @@ export function IssueDetailModal({
 								<span className="text-muted">No project</span>
 							)}
 						</div>
+
+						<section>
+							<h3 className="pb-1 text-xs font-medium uppercase tracking-wide text-muted">
+								Status
+							</h3>
+							<Popover.Root open={stateOpen} onOpenChange={setStateOpen}>
+								<Popover.Trigger asChild>
+									<Button type="button" appearance="outlined">
+										<span
+											className="size-2.5 shrink-0 rounded-full"
+											style={{ backgroundColor: issue.state.color }}
+										/>
+										{issue.state.name}
+									</Button>
+								</Popover.Trigger>
+								<Popover.Content className="z-50 w-56 rounded-md border border-card bg-card p-1 text-strong shadow-lg">
+									{states.length === 0 ? (
+										<p className="px-2 py-1.5 text-sm text-muted">Loading statuses…</p>
+									) : (
+										states.map((state) => (
+											<button
+												key={state.id}
+												type="button"
+												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+												onClick={() => {
+													if (state.id !== issue.state.id) {
+														updateState.mutate({
+															issueId: issue.id,
+															state: {
+																id: state.id,
+																name: state.name,
+																color: state.color,
+																type: state.type,
+															},
+														});
+													}
+													setStateOpen(false);
+												}}
+											>
+												<span
+													className="size-2.5 shrink-0 rounded-full"
+													style={{ backgroundColor: state.color }}
+												/>
+												<span className="flex-1 truncate">{state.name}</span>
+												{state.id === issue.state.id ? (
+													<Check className="size-4 shrink-0 text-muted" />
+												) : null}
+											</button>
+										))
+									)}
+								</Popover.Content>
+							</Popover.Root>
+						</section>
 
 						<section>
 							<h3 className="pb-1 text-xs font-medium uppercase tracking-wide text-muted">
