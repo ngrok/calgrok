@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Form } from "react-router";
 import { CONTENT_TAG_NAMES } from "~/lib/content-tags";
 import { FilterBar, useCalendarFilters } from "./filters";
-import { MonthGrid } from "./month-grid";
+import { MonthList } from "./month-list";
 import { useLabels } from "./queries";
 import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
@@ -30,8 +30,8 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 	);
 
 	return (
-		<div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-4 p-4 sm:p-6">
-			<header className="flex items-center justify-between gap-2">
+		<div className="mx-auto flex h-dvh max-w-6xl flex-col gap-4 p-4 sm:p-6">
+			<header className="flex shrink-0 items-center justify-between gap-2">
 				<div>
 					<h1 className="text-xl font-medium text-strong">calgrok</h1>
 					<p className="text-xs text-muted">{viewer.name}</p>
@@ -43,7 +43,7 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 				</Form>
 			</header>
 
-			<div className="flex flex-wrap items-center gap-2">
+			<div className="flex shrink-0 flex-wrap items-center gap-2">
 				<FilterBar
 					teamIds={filters.teamIds}
 					labelIds={filters.labelIds}
@@ -58,7 +58,7 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 				</div>
 			</div>
 
-			<MonthGrid teamIds={filters.teamIds} labelIds={effectiveLabelIds} options={options} />
+			<MonthList teamIds={filters.teamIds} labelIds={effectiveLabelIds} options={options} />
 		</div>
 	);
 }
