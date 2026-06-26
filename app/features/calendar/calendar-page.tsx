@@ -1,28 +1,89 @@
 import { Button } from "@ngrok/mantle/button";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Form } from "react-router";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
-import { useLabels } from "./queries";
+import { useLabels, useTeams } from "./queries";
 import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
 export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
-	const filters = useCalendarFilters();
+	const teamsQuery = useTeams();
+	const teams = teamsQuery.data ?? [];
+	const filters = useCalendarFilters(teams);
+	const { labelIds, setLabelIds } = filters;
 	const { options, toggle } = useViewOptions();
 	const listRef = useRef<MonthListHandle>(null);
-	// Every "con/" label is offered automatically; the API already scopes labels
-	// to that namespace, so new ones appear without a code change.
-	const { data: contentLabels = [] } = useLabels();
-
-	// Effective filter: the user's selection, or — when nothing is selected — all
-	// content-type ids, so only content-tagged issues ever show.
-	const effectiveLabelIds = useMemo(
+	const labelsQuery = useLabels();
+	const labelConfig = labelsQuery.data;
+	const labels = labelConfig?.labels ?? [];
+	const requiresLabelMatch = labelConfig?.requiresLabelMatch ?? true;
+	const visibleLabels = useMemo(
 		() =>
-			filters.labelIds.length > 0
-				? filters.labelIds
-				: contentLabels.flatMap((option) => option.ids),
-		[filters.labelIds, contentLabels],
+			filters.teamIds.length === 0
+				? []
+				: labels.filter(
+						(option) =>
+							option.globalIds.length > 0 ||
+							filters.teamIds.some((teamId) => option.idByTeam[teamId]),
+					),
+		[filters.teamIds, labels],
 	);
+	const visibleSelectedLabelIds = useMemo(() => {
+		if (filters.labelIds.length === 0) {
+			return [];
+		}
+		const visibleIds = new Set(visibleLabels.flatMap((option) => option.ids));
+		return filters.labelIds.filter((id) => visibleIds.has(id));
+	}, [filters.labelIds, visibleLabels]);
+	const defaultLabelIds = useMemo(
+		() => visibleLabels.filter((option) => option.matchesNamespace).flatMap((option) => option.ids),
+		[visibleLabels],
+	);
+	const lastAppliedDefaultLabels = useRef<string | null>(null);
+	useEffect(() => {
+		if (!requiresLabelMatch || !labelsQuery.isSuccess) {
+			return;
+		}
+
+		const defaultSignature = defaultLabelIds.join(",");
+		const visibleIds = new Set(visibleLabels.flatMap((option) => option.ids));
+		const prunedLabelIds = labelIds.filter((id) => visibleIds.has(id));
+
+		if (defaultLabelIds.length > 0 && prunedLabelIds.length === 0) {
+			if (lastAppliedDefaultLabels.current !== defaultSignature) {
+				setLabelIds(defaultLabelIds);
+				lastAppliedDefaultLabels.current = defaultSignature;
+			}
+			return;
+		}
+
+		if (prunedLabelIds.length !== labelIds.length) {
+			setLabelIds(prunedLabelIds);
+		}
+	}, [
+		defaultLabelIds,
+		labelIds,
+		labelsQuery.isSuccess,
+		requiresLabelMatch,
+		setLabelIds,
+		visibleLabels,
+	]);
+
+	// Effective filter: explicit selected visible labels. Namespace defaults are
+	// written into filter state above so the picker and query stay in sync.
+	const effectiveLabelIds = useMemo(
+		() => (requiresLabelMatch || visibleSelectedLabelIds.length > 0 ? visibleSelectedLabelIds : []),
+		[visibleSelectedLabelIds, requiresLabelMatch],
+	);
+	const canFetchIssues =
+		labelsQuery.isSuccess &&
+		filters.teamIds.length > 0 &&
+		(!requiresLabelMatch || effectiveLabelIds.length > 0);
+	const issueQueryBlockedMessage = labelsQuery.isSuccess
+		? requiresLabelMatch && effectiveLabelIds.length === 0
+			? "No labels match the configured namespace."
+			: undefined
+		: "Loading labels…";
 
 	return (
 		<div className="flex h-dvh flex-col">
@@ -32,9 +93,11 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 					<p className="text-xs text-muted">{viewer.name}</p>
 				</div>
 				<FilterBar
+					teams={teams}
+					teamsLoading={teamsQuery.isLoading}
 					teamIds={filters.teamIds}
 					labelIds={filters.labelIds}
-					labels={contentLabels}
+					labels={visibleLabels}
 					onToggleTeam={filters.toggleTeam}
 					onToggleLabelGroup={filters.toggleLabelGroup}
 					onClearLabels={filters.clearLabels}
@@ -63,6 +126,8 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 					teamIds={filters.teamIds}
 					labelIds={effectiveLabelIds}
 					options={options}
+					canFetchIssues={canFetchIssues}
+					blockedMessage={issueQueryBlockedMessage}
 				/>
 			</main>
 		</div>

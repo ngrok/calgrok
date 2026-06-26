@@ -9,7 +9,7 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import { cx } from "@ngrok/mantle/cx";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { addMonths, startOfMonth } from "date-fns";
 import {
 	forwardRef,
@@ -33,6 +33,7 @@ import type { ViewOptions } from "./view-options";
 // How many months to render initially: one before "today" plus a few after, so
 // the viewport is filled and the observer takes over from there.
 const INITIAL_OFFSETS = [-1, 0, 1, 2];
+const TODAY_SCROLL_FRACTION = 0.3;
 
 // Render a placeholder until mounted so the date-dependent grid doesn't differ
 // between server and first client render (avoids hydration mismatch), and so
@@ -80,10 +81,13 @@ export const MonthList = forwardRef<
 		teamIds: string[];
 		labelIds: string[];
 		options: ViewOptions;
+		canFetchIssues: boolean;
+		blockedMessage?: string;
 	}
->(function MonthList({ teamIds, labelIds, options }, ref) {
+>(function MonthList({ teamIds, labelIds, options, canFetchIssues, blockedMessage }, ref) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
+	const issueFetchCount = useIsFetching({ queryKey: ["calendar", "issues"] });
 	const today = useMemo(() => new Date(), []);
 	const noTeams = teamIds.length === 0;
 
@@ -139,23 +143,69 @@ export const MonthList = forwardRef<
 	}, [months]);
 
 	const scrollToToday = useCallback(() => {
-		todayRef.current?.scrollIntoView({ block: "start" });
+		const root = scrollRef.current;
+		const target = todayRef.current;
+		if (!root || !target) {
+			return;
+		}
+		const rootRect = root.getBoundingClientRect();
+		const targetRect = target.getBoundingClientRect();
+		const targetTopInScroll = targetRect.top - rootRect.top + root.scrollTop;
+		const nextTop = Math.max(0, targetTopInScroll - root.clientHeight * TODAY_SCROLL_FRACTION);
+		root.scrollTo({ top: nextTop });
 	}, []);
 	useImperativeHandle(ref, () => ({ scrollToToday }), [scrollToToday]);
 
-	// Land on the current month on first paint.
+	// Land on today on first paint, then correct once the first issue fetch
+	// settles because cards above today can change row heights.
 	const didInit = useRef(false);
+	const sawInitialIssueFetch = useRef(false);
+	const initFallbackTimer = useRef<number | null>(null);
 	useLayoutEffect(() => {
-		if (hydrated && !didInit.current && todayRef.current) {
-			todayRef.current.scrollIntoView({ block: "start" });
-			didInit.current = true;
+		if (hydrated && canFetchIssues && !didInit.current && todayRef.current) {
+			scrollToToday();
+			initFallbackTimer.current = window.setTimeout(() => {
+				if (!didInit.current) {
+					scrollToToday();
+					didInit.current = true;
+				}
+			}, 750);
 		}
-	}, [hydrated]);
+		return () => {
+			if (initFallbackTimer.current != null) {
+				window.clearTimeout(initFallbackTimer.current);
+				initFallbackTimer.current = null;
+			}
+		};
+	}, [hydrated, canFetchIssues, scrollToToday]);
+
+	useEffect(() => {
+		if (!hydrated || !canFetchIssues || didInit.current) {
+			return;
+		}
+		if (issueFetchCount > 0) {
+			sawInitialIssueFetch.current = true;
+			return;
+		}
+		if (!sawInitialIssueFetch.current) {
+			return;
+		}
+
+		const frame = window.requestAnimationFrame(() => {
+			scrollToToday();
+			didInit.current = true;
+			if (initFallbackTimer.current != null) {
+				window.clearTimeout(initFallbackTimer.current);
+				initFallbackTimer.current = null;
+			}
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [hydrated, canFetchIssues, issueFetchCount, scrollToToday]);
 
 	// Grow the list in whichever direction the user scrolls.
 	useEffect(() => {
 		const root = scrollRef.current;
-		if (!root || !hydrated || noTeams) {
+		if (!root || !hydrated || noTeams || !canFetchIssues) {
 			return;
 		}
 		const top = topSentinelRef.current;
@@ -182,12 +232,12 @@ export const MonthList = forwardRef<
 			observer.observe(bottom);
 		}
 		return () => observer.disconnect();
-	}, [hydrated, noTeams, appendMonth, prependMonth]);
+	}, [hydrated, noTeams, canFetchIssues, appendMonth, prependMonth]);
 
 	// Warm the cache just beyond each edge so a freshly revealed month rarely
 	// has to pop in empty (which would also shift the prepend anchor).
 	useEffect(() => {
-		if (noTeams) {
+		if (!canFetchIssues) {
 			return;
 		}
 		const first = months[0];
@@ -205,7 +255,7 @@ export const MonthList = forwardRef<
 				labelIds,
 			});
 		}
-	}, [months, queryClient, teamIds, labelIds, noTeams]);
+	}, [months, queryClient, teamIds, labelIds, canFetchIssues]);
 
 	// Issue detail modal, driven reactively from the cache (see useIssueById).
 	const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
@@ -234,6 +284,9 @@ export const MonthList = forwardRef<
 
 	if (noTeams) {
 		return <p className="text-sm text-muted">Select at least one team to see issues.</p>;
+	}
+	if (!canFetchIssues) {
+		return <p className="text-sm text-muted">{blockedMessage ?? "Select labels to see issues."}</p>;
 	}
 
 	return (
@@ -268,6 +321,7 @@ export const MonthList = forwardRef<
 									month={month}
 									teamIds={teamIds}
 									labelIds={labelIds}
+									enabled={canFetchIssues}
 									options={options}
 									today={today}
 									gridColsClass={gridColsClass}

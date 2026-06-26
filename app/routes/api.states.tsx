@@ -1,6 +1,5 @@
-import { fetchWorkflowStates } from "~/lib/linear-graphql.server";
 import { getLinearAuth } from "~/lib/linear.server";
-import { DEFAULT_TEAM_IDS } from "~/lib/teams";
+import { fetchWorkflowStates } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.states";
 
 // BFF resource route for the status picker: returns the workflow states for the
@@ -14,7 +13,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 	const url = new URL(request.url);
 	const teamIdsParam = url.searchParams.get("teamIds");
-	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : DEFAULT_TEAM_IDS;
+	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : [];
+	if (teamIds.length === 0) {
+		throw new Response("Missing required 'teamIds' query param", { status: 400 });
+	}
 
 	const states = await fetchWorkflowStates(auth.accessToken, teamIds);
 	return Response.json({ states }, auth.headers ? { headers: auth.headers } : undefined);

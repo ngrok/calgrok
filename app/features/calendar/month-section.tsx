@@ -19,8 +19,8 @@ const NO_ISSUES: CalendarIssue[] = [];
  * it scrolls into view and is cached/deduped by React Query like every other
  * month.
  *
- * The ref is forwarded to the section element so the parent can scroll the
- * current month into view ("Today").
+ * The ref is forwarded to today's day cell when this section contains today so
+ * the parent can position the exact date in the viewport.
  */
 export const MonthSection = forwardRef<
 	HTMLDivElement,
@@ -28,13 +28,14 @@ export const MonthSection = forwardRef<
 		month: Date;
 		teamIds: string[];
 		labelIds: string[];
+		enabled: boolean;
 		options: ViewOptions;
 		today: Date;
 		gridColsClass: string;
 		onOpenIssue: (issue: CalendarIssue) => void;
 	}
 >(function MonthSection(
-	{ month, teamIds, labelIds, options, today, gridColsClass, onOpenIssue },
+	{ month, teamIds, labelIds, enabled, options, today, gridColsClass, onOpenIssue },
 	ref,
 ) {
 	const range = useMemo(() => monthGridRange(month), [month]);
@@ -48,7 +49,7 @@ export const MonthSection = forwardRef<
 		[range, teamIds, labelIds],
 	);
 
-	const { data: issues = [], isLoading, isError } = useCalendarIssues(params);
+	const { data: issues = [], isLoading, isError } = useCalendarIssues(params, enabled);
 
 	// View toggles applied client-side (instant, no refetch).
 	const visibleIssues = useMemo(
@@ -107,6 +108,7 @@ export const MonthSection = forwardRef<
 						{days.map((day) => (
 							<DayCell
 								key={day.toISOString()}
+								ref={isSameDay(day, today) ? ref : undefined}
 								date={day}
 								issues={byDate.get(toISODate(day)) ?? NO_ISSUES}
 								isCurrentMonth={isSameMonth(day, month)}

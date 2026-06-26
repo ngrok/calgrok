@@ -38,7 +38,7 @@ export function IssueDetailModal({
 	issue: CalendarIssue | null;
 	onClose: () => void;
 }) {
-	const { data: conLabels = [] } = useLabels();
+	const { data: labelConfig } = useLabels();
 	const detail = useIssueDescription(issue?.id ?? null);
 	const updateDueDate = useUpdateDueDate();
 	const clearDueDate = useClearDueDate();
@@ -49,25 +49,24 @@ export function IssueDetailModal({
 	const [stateOpen, setStateOpen] = useState(false);
 
 	// Only labels that exist in this issue's team can be applied to it.
+	const labelOptions = labelConfig?.labels ?? [];
 	const applicableLabels = issue
-		? conLabels.filter((option) => option.idByTeam[issue.team.id])
+		? labelOptions.filter((option) => option.idByTeam[issue.team.id] || option.globalIds.length > 0)
 		: [];
 
 	function toggleTag(option: (typeof applicableLabels)[number]) {
 		if (!issue) {
 			return;
 		}
-		const teamLabelId = option.idByTeam[issue.team.id];
-		if (!teamLabelId) {
+		const labelId = option.idByTeam[issue.team.id] ?? option.globalIds[0];
+		if (!labelId) {
 			return;
 		}
 		// Drop any id belonging to this option, then add the team-correct one when
 		// turning it on. Labels from other options (con/ or not) are preserved.
 		const isOn = option.ids.some((id) => issue.labels.some((l) => l.id === id));
 		const base = issue.labels.filter((l) => !option.ids.includes(l.id));
-		const next = isOn
-			? base
-			: [...base, { id: teamLabelId, name: option.name, color: option.color }];
+		const next = isOn ? base : [...base, { id: labelId, name: option.name, color: option.color }];
 		updateLabels.mutate({ issueId: issue.id, labels: next });
 	}
 
@@ -227,25 +226,30 @@ export function IssueDetailModal({
 						<section>
 							<h3 className="pb-1 text-xs font-medium uppercase tracking-wide text-muted">Tags</h3>
 							{applicableLabels.length === 0 ? (
-								<p className="text-sm text-muted">No content tags for this team.</p>
+								<p className="text-sm text-muted">No tags for this team.</p>
 							) : (
 								<div className="flex max-h-40 flex-col gap-1 overflow-auto">
-									{applicableLabels.map((option) => (
-										<label
-											key={option.name}
-											className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card"
-										>
-											<Checkbox
-												checked={option.ids.some((id) => issue.labels.some((l) => l.id === id))}
-												onChange={() => toggleTag(option)}
-											/>
-											<span
-												className="size-2 shrink-0 rounded-full"
-												style={{ backgroundColor: option.color }}
-											/>
-											<span className="truncate text-sm text-strong">{option.name}</span>
-										</label>
-									))}
+									{applicableLabels.map((option) => {
+										const checkboxId = `issue-label-${issue.id}-${option.ids.join("-")}`;
+										return (
+											<label
+												key={option.name}
+												htmlFor={checkboxId}
+												className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card"
+											>
+												<Checkbox
+													id={checkboxId}
+													checked={option.ids.some((id) => issue.labels.some((l) => l.id === id))}
+													onChange={() => toggleTag(option)}
+												/>
+												<span
+													className="size-2 shrink-0 rounded-full"
+													style={{ backgroundColor: option.color }}
+												/>
+												<span className="truncate text-sm text-strong">{option.name}</span>
+											</label>
+										);
+									})}
 								</div>
 							)}
 						</section>

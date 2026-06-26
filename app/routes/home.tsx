@@ -37,7 +37,7 @@ export function ConnectScreen() {
 			<h1 className="text-4xl font-medium text-strong">calgrok</h1>
 			<p className="max-w-prose text-muted">
 				A fast, month-view content calendar backed live by Linear. Connect your Linear account to
-				see GTM &amp; Content issues by their due date.
+				choose teams and see issues by their due date.
 			</p>
 			<Button asChild appearance="filled">
 				<a href="/auth/linear">Connect Linear</a>

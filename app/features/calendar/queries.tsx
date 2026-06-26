@@ -1,4 +1,4 @@
-import { Toast, makeToast } from "@ngrok/mantle/toast";
+import { makeToast, Toast } from "@ngrok/mantle/toast";
 import {
 	keepPreviousData,
 	type QueryClient,
@@ -6,7 +6,13 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import type { CalendarIssue, IssuesQueryParams, LabelOption, WorkflowState } from "./types";
+import type {
+	CalendarIssue,
+	IssuesQueryParams,
+	LabelsResponse,
+	TeamOption,
+	WorkflowState,
+} from "./types";
 
 function rollbackTo(
 	queryClient: QueryClient,
@@ -57,25 +63,22 @@ async function fetchIssues(params: IssuesQueryParams): Promise<CalendarIssue[]> 
 	return json.issues;
 }
 
-export function useCalendarIssues(params: IssuesQueryParams) {
+export function useCalendarIssues(params: IssuesQueryParams, enabled: boolean) {
 	return useQuery({
 		queryKey: calendarKeys.issues(params),
 		queryFn: () => fetchIssues(params),
-		// Need at least one team and the content-type label set resolved; otherwise
-		// there's nothing meaningful (or safe) to show yet.
-		enabled: (params.teamIds?.length ?? 0) > 0 && (params.labelIds?.length ?? 0) > 0,
+		enabled,
 		// Keep showing the current month while the next one loads (no empty flash).
 		placeholderData: keepPreviousData,
 	});
 }
 
-async function fetchLabelsList(): Promise<LabelOption[]> {
+async function fetchLabelsList(): Promise<LabelsResponse> {
 	const res = await fetch("/api/labels", { headers: { Accept: "application/json" } });
 	if (!res.ok) {
 		throw new Error(`Failed to load labels (${res.status})`);
 	}
-	const json = (await res.json()) as { labels: LabelOption[] };
-	return json.labels;
+	return (await res.json()) as LabelsResponse;
 }
 
 export function useLabels() {
@@ -83,6 +86,23 @@ export function useLabels() {
 		queryKey: [ROOT, "labels"] as const,
 		queryFn: fetchLabelsList,
 		staleTime: 5 * 60 * 1000, // labels change rarely
+	});
+}
+
+async function fetchTeamsList(): Promise<TeamOption[]> {
+	const res = await fetch("/api/teams", { headers: { Accept: "application/json" } });
+	if (!res.ok) {
+		throw new Error(`Failed to load teams (${res.status})`);
+	}
+	const json = (await res.json()) as { teams: TeamOption[] };
+	return json.teams;
+}
+
+export function useTeams() {
+	return useQuery({
+		queryKey: [ROOT, "teams"] as const,
+		queryFn: fetchTeamsList,
+		staleTime: 5 * 60 * 1000, // teams change rarely
 	});
 }
 
@@ -300,6 +320,9 @@ export function useUpdateState() {
 
 /** Warm the cache for a month the user is likely to navigate to next. */
 export function prefetchCalendarIssues(client: QueryClient, params: IssuesQueryParams) {
+	if ((params.teamIds?.length ?? 0) === 0) {
+		return Promise.resolve();
+	}
 	return client.prefetchQuery({
 		queryKey: calendarKeys.issues(params),
 		queryFn: () => fetchIssues(params),
