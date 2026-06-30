@@ -8,13 +8,14 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
-import { Button } from "@ngrok/mantle/button";
 import { cx } from "@ngrok/mantle/cx";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { addMonths, startOfMonth } from "date-fns";
 import {
+	forwardRef,
 	useCallback,
 	useEffect,
+	useImperativeHandle,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -32,6 +33,7 @@ import type { ViewOptions } from "./view-options";
 // How many months to render initially: one before "today" plus a few after, so
 // the viewport is filled and the observer takes over from there.
 const INITIAL_OFFSETS = [-1, 0, 1, 2];
+const TODAY_SCROLL_FRACTION = 0.3;
 
 // Render a placeholder until mounted so the date-dependent grid doesn't differ
 // between server and first client render (avoids hydration mismatch), and so
@@ -70,17 +72,22 @@ function useIssueById(id: string | null): CalendarIssue | null {
 	);
 }
 
-export function MonthList({
-	teamIds,
-	labelIds,
-	options,
-}: {
-	teamIds: string[];
-	labelIds: string[];
-	options: ViewOptions;
-}) {
+/** Imperative handle so the page header's "Today" button can scroll the list. */
+export type MonthListHandle = { scrollToToday: () => void };
+
+export const MonthList = forwardRef<
+	MonthListHandle,
+	{
+		teamIds: string[];
+		labelIds: string[];
+		options: ViewOptions;
+		canFetchIssues: boolean;
+		blockedMessage?: string;
+	}
+>(function MonthList({ teamIds, labelIds, options, canFetchIssues, blockedMessage }, ref) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
+	const issueFetchCount = useIsFetching({ queryKey: ["calendar", "issues"] });
 	const today = useMemo(() => new Date(), []);
 	const noTeams = teamIds.length === 0;
 
@@ -98,7 +105,11 @@ export function MonthList({
 	// anchored when months are added above.
 	const prevScrollHeight = useRef<number | null>(null);
 
-	const gridColsClass = options.showWeekends ? "grid-cols-7" : "grid-cols-5";
+	// A fixed left gutter column (for the floating month label) plus the day
+	// columns. Months render their owned weeks into this template so they line up.
+	const gridColsClass = options.showWeekends
+		? "grid-cols-[4.5rem_repeat(7,minmax(0,1fr))]"
+		: "grid-cols-[4.5rem_repeat(5,minmax(0,1fr))]";
 	const weekdayLabels = options.showWeekends ? WEEKDAY_LABELS : WEEKDAY_LABELS.slice(0, 5);
 
 	const appendMonth = useCallback(() => {
@@ -132,22 +143,69 @@ export function MonthList({
 	}, [months]);
 
 	const scrollToToday = useCallback(() => {
-		todayRef.current?.scrollIntoView({ block: "start" });
-	}, []);
-
-	// Land on the current month on first paint.
-	const didInit = useRef(false);
-	useLayoutEffect(() => {
-		if (hydrated && !didInit.current && todayRef.current) {
-			todayRef.current.scrollIntoView({ block: "start" });
-			didInit.current = true;
+		const root = scrollRef.current;
+		const target = todayRef.current;
+		if (!root || !target) {
+			return;
 		}
-	}, [hydrated]);
+		const rootRect = root.getBoundingClientRect();
+		const targetRect = target.getBoundingClientRect();
+		const targetTopInScroll = targetRect.top - rootRect.top + root.scrollTop;
+		const nextTop = Math.max(0, targetTopInScroll - root.clientHeight * TODAY_SCROLL_FRACTION);
+		root.scrollTo({ top: nextTop });
+	}, []);
+	useImperativeHandle(ref, () => ({ scrollToToday }), [scrollToToday]);
+
+	// Land on today on first paint, then correct once the first issue fetch
+	// settles because cards above today can change row heights.
+	const didInit = useRef(false);
+	const sawInitialIssueFetch = useRef(false);
+	const initFallbackTimer = useRef<number | null>(null);
+	useLayoutEffect(() => {
+		if (hydrated && canFetchIssues && !didInit.current && todayRef.current) {
+			scrollToToday();
+			initFallbackTimer.current = window.setTimeout(() => {
+				if (!didInit.current) {
+					scrollToToday();
+					didInit.current = true;
+				}
+			}, 750);
+		}
+		return () => {
+			if (initFallbackTimer.current != null) {
+				window.clearTimeout(initFallbackTimer.current);
+				initFallbackTimer.current = null;
+			}
+		};
+	}, [hydrated, canFetchIssues, scrollToToday]);
+
+	useEffect(() => {
+		if (!hydrated || !canFetchIssues || didInit.current) {
+			return;
+		}
+		if (issueFetchCount > 0) {
+			sawInitialIssueFetch.current = true;
+			return;
+		}
+		if (!sawInitialIssueFetch.current) {
+			return;
+		}
+
+		const frame = window.requestAnimationFrame(() => {
+			scrollToToday();
+			didInit.current = true;
+			if (initFallbackTimer.current != null) {
+				window.clearTimeout(initFallbackTimer.current);
+				initFallbackTimer.current = null;
+			}
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [hydrated, canFetchIssues, issueFetchCount, scrollToToday]);
 
 	// Grow the list in whichever direction the user scrolls.
 	useEffect(() => {
 		const root = scrollRef.current;
-		if (!root || !hydrated || noTeams) {
+		if (!root || !hydrated || noTeams || !canFetchIssues) {
 			return;
 		}
 		const top = topSentinelRef.current;
@@ -174,12 +232,12 @@ export function MonthList({
 			observer.observe(bottom);
 		}
 		return () => observer.disconnect();
-	}, [hydrated, noTeams, appendMonth, prependMonth]);
+	}, [hydrated, noTeams, canFetchIssues, appendMonth, prependMonth]);
 
 	// Warm the cache just beyond each edge so a freshly revealed month rarely
 	// has to pop in empty (which would also shift the prepend anchor).
 	useEffect(() => {
-		if (noTeams) {
+		if (!canFetchIssues) {
 			return;
 		}
 		const first = months[0];
@@ -197,7 +255,7 @@ export function MonthList({
 				labelIds,
 			});
 		}
-	}, [months, queryClient, teamIds, labelIds, noTeams]);
+	}, [months, queryClient, teamIds, labelIds, canFetchIssues]);
 
 	// Issue detail modal, driven reactively from the cache (see useIssueById).
 	const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
@@ -227,15 +285,12 @@ export function MonthList({
 	if (noTeams) {
 		return <p className="text-sm text-muted">Select at least one team to see issues.</p>;
 	}
+	if (!canFetchIssues) {
+		return <p className="text-sm text-muted">{blockedMessage ?? "Select labels to see issues."}</p>;
+	}
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="flex items-center justify-end pb-2">
-				<Button type="button" appearance="outlined" onClick={scrollToToday}>
-					Today
-				</Button>
-			</div>
-
 			{hydrated ? (
 				<DndContext
 					sensors={sensors}
@@ -245,26 +300,35 @@ export function MonthList({
 				>
 					<div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
 						<div ref={topSentinelRef} className="h-px" />
-						<div className={cx("sticky top-0 z-10 grid bg-body pb-1", gridColsClass)}>
+						<div
+							className={cx(
+								"sticky top-0 z-20 grid border-b border-card-muted bg-base py-2",
+								gridColsClass,
+							)}
+						>
+							<div />
 							{weekdayLabels.map((label) => (
-								<div key={label} className="px-1 text-xs font-medium text-muted">
+								<div key={label} className="px-1 text-base font-medium text-muted">
 									{label}
 								</div>
 							))}
 						</div>
-						{months.map((month) => (
-							<MonthSection
-								key={toISODate(month)}
-								ref={toISODate(month) === currentMonthIso ? todayRef : undefined}
-								month={month}
-								teamIds={teamIds}
-								labelIds={labelIds}
-								options={options}
-								today={today}
-								gridColsClass={gridColsClass}
-								onOpenIssue={handleOpenIssue}
-							/>
-						))}
+						<div className="border-r border-card-muted">
+							{months.map((month) => (
+								<MonthSection
+									key={toISODate(month)}
+									ref={toISODate(month) === currentMonthIso ? todayRef : undefined}
+									month={month}
+									teamIds={teamIds}
+									labelIds={labelIds}
+									enabled={canFetchIssues}
+									options={options}
+									today={today}
+									gridColsClass={gridColsClass}
+									onOpenIssue={handleOpenIssue}
+								/>
+							))}
+						</div>
 						<div ref={bottomSentinelRef} className="h-px" />
 					</div>
 					<DragOverlay>
@@ -282,4 +346,4 @@ export function MonthList({
 			<IssueDetailModal issue={selectedIssue} onClose={() => setSelectedIssueId(null)} />
 		</div>
 	);
-}
+});

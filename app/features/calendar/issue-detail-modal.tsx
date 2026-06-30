@@ -7,6 +7,7 @@ import { ArrowSquareOut, CalendarBlank, Check, FolderOpen, X } from "@phosphor-i
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
 import { toISODate } from "./date-utils";
+import { PriorityIcon } from "./priority-icon";
 import {
 	useClearDueDate,
 	useIssueDescription,
@@ -16,6 +17,7 @@ import {
 	useUpdateState,
 	useWorkflowStates,
 } from "./queries";
+import { StatusIcon } from "./status-icon";
 import type { CalendarIssue } from "./types";
 
 function Avatar({ assignee }: { assignee: NonNullable<CalendarIssue["assignee"]> }) {
@@ -36,7 +38,7 @@ export function IssueDetailModal({
 	issue: CalendarIssue | null;
 	onClose: () => void;
 }) {
-	const { data: conLabels = [] } = useLabels();
+	const { data: labelConfig } = useLabels();
 	const detail = useIssueDescription(issue?.id ?? null);
 	const updateDueDate = useUpdateDueDate();
 	const clearDueDate = useClearDueDate();
@@ -47,25 +49,24 @@ export function IssueDetailModal({
 	const [stateOpen, setStateOpen] = useState(false);
 
 	// Only labels that exist in this issue's team can be applied to it.
+	const labelOptions = labelConfig?.labels ?? [];
 	const applicableLabels = issue
-		? conLabels.filter((option) => option.idByTeam[issue.team.id])
+		? labelOptions.filter((option) => option.idByTeam[issue.team.id] || option.globalIds.length > 0)
 		: [];
 
 	function toggleTag(option: (typeof applicableLabels)[number]) {
 		if (!issue) {
 			return;
 		}
-		const teamLabelId = option.idByTeam[issue.team.id];
-		if (!teamLabelId) {
+		const labelId = option.idByTeam[issue.team.id] ?? option.globalIds[0];
+		if (!labelId) {
 			return;
 		}
 		// Drop any id belonging to this option, then add the team-correct one when
 		// turning it on. Labels from other options (con/ or not) are preserved.
 		const isOn = option.ids.some((id) => issue.labels.some((l) => l.id === id));
 		const base = issue.labels.filter((l) => !option.ids.includes(l.id));
-		const next = isOn
-			? base
-			: [...base, { id: teamLabelId, name: option.name, color: option.color }];
+		const next = isOn ? base : [...base, { id: labelId, name: option.name, color: option.color }];
 		updateLabels.mutate({ issueId: issue.id, labels: next });
 	}
 
@@ -98,7 +99,8 @@ export function IssueDetailModal({
 							) : (
 								<span className="text-muted">Unassigned</span>
 							)}
-							<span className="inline-flex items-center rounded-full border border-card px-2 py-0.5 text-xs text-muted">
+							<span className="inline-flex items-center gap-1.5 text-muted">
+								<PriorityIcon priority={issue.priority} className="size-4" />
 								{issue.priorityLabel}
 							</span>
 							{issue.project ? (
@@ -123,9 +125,10 @@ export function IssueDetailModal({
 							<Popover.Root open={stateOpen} onOpenChange={setStateOpen}>
 								<Popover.Trigger asChild>
 									<Button type="button" appearance="outlined">
-										<span
-											className="size-2.5 shrink-0 rounded-full"
-											style={{ backgroundColor: issue.state.color }}
+										<StatusIcon
+											type={issue.state.type}
+											color={issue.state.color}
+											className="size-4"
 										/>
 										{issue.state.name}
 									</Button>
@@ -154,10 +157,7 @@ export function IssueDetailModal({
 													setStateOpen(false);
 												}}
 											>
-												<span
-													className="size-2.5 shrink-0 rounded-full"
-													style={{ backgroundColor: state.color }}
-												/>
+												<StatusIcon type={state.type} color={state.color} className="size-4" />
 												<span className="flex-1 truncate">{state.name}</span>
 												{state.id === issue.state.id ? (
 													<Check className="size-4 shrink-0 text-muted" />
@@ -226,25 +226,30 @@ export function IssueDetailModal({
 						<section>
 							<h3 className="pb-1 text-xs font-medium uppercase tracking-wide text-muted">Tags</h3>
 							{applicableLabels.length === 0 ? (
-								<p className="text-sm text-muted">No content tags for this team.</p>
+								<p className="text-sm text-muted">No tags for this team.</p>
 							) : (
 								<div className="flex max-h-40 flex-col gap-1 overflow-auto">
-									{applicableLabels.map((option) => (
-										<label
-											key={option.name}
-											className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card"
-										>
-											<Checkbox
-												checked={option.ids.some((id) => issue.labels.some((l) => l.id === id))}
-												onChange={() => toggleTag(option)}
-											/>
-											<span
-												className="size-2 shrink-0 rounded-full"
-												style={{ backgroundColor: option.color }}
-											/>
-											<span className="truncate text-sm text-strong">{option.name}</span>
-										</label>
-									))}
+									{applicableLabels.map((option) => {
+										const checkboxId = `issue-label-${issue.id}-${option.ids.join("-")}`;
+										return (
+											<label
+												key={option.name}
+												htmlFor={checkboxId}
+												className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card"
+											>
+												<Checkbox
+													id={checkboxId}
+													checked={option.ids.some((id) => issue.labels.some((l) => l.id === id))}
+													onChange={() => toggleTag(option)}
+												/>
+												<span
+													className="size-2 shrink-0 rounded-full"
+													style={{ backgroundColor: option.color }}
+												/>
+												<span className="truncate text-sm text-strong">{option.name}</span>
+											</label>
+										);
+									})}
 								</div>
 							)}
 						</section>

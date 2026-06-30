@@ -76,15 +76,19 @@ export function ViewOptionsMenu({
 				</Button>
 			</Popover.Trigger>
 			<Popover.Content className="z-50 flex w-56 flex-col gap-1 rounded-md border border-card bg-card p-2 text-strong shadow-lg">
-				{OPTION_LABELS.map(({ key, label }) => (
-					<label
-						key={key}
-						className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card-hover"
-					>
-						<Checkbox checked={options[key]} onChange={() => onToggle(key)} />
-						<span className="text-sm text-strong">{label}</span>
-					</label>
-				))}
+				{OPTION_LABELS.map(({ key, label }) => {
+					const checkboxId = `view-option-${key}`;
+					return (
+						<label
+							key={key}
+							htmlFor={checkboxId}
+							className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-card-hover"
+						>
+							<Checkbox id={checkboxId} checked={options[key]} onChange={() => onToggle(key)} />
+							<span className="text-sm text-strong">{label}</span>
+						</label>
+					);
+				})}
 			</Popover.Content>
 		</Popover.Root>
 	);

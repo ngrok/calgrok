@@ -16,6 +16,7 @@ export const env = {
 	LINEAR_CLIENT_SECRET: required("LINEAR_CLIENT_SECRET"),
 	LINEAR_REDIRECT_URI: required("LINEAR_REDIRECT_URI"),
 	SESSION_SECRET: required("SESSION_SECRET"),
+	LINEAR_LABEL_NAMESPACE: process.env.LINEAR_LABEL_NAMESPACE?.trim() ?? "",
 	NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;
 

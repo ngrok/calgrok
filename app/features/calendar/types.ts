@@ -34,15 +34,31 @@ export type WorkflowState = {
 };
 
 // A label as the picker uses it: same display name may map to several Linear
-// labels (the same `con/x` defined separately per team), so we carry all ids
-// plus a per-team id for applying the right one to an issue.
+// labels defined separately per team, so we carry all ids plus a per-team id for
+// applying the right one to an issue.
 export type LabelOption = {
 	name: string;
 	color: string;
+	/** True when this label matched LINEAR_LABEL_NAMESPACE before display cleanup. */
+	matchesNamespace: boolean;
 	/** All label ids sharing this display name (used for filtering). */
 	ids: string[];
 	/** teamId -> labelId, for applying the team-correct label to an issue. */
 	idByTeam: Record<string, string>;
+	/** Workspace-level label ids, when Linear returns labels without a team. */
+	globalIds: string[];
+};
+
+export type LabelsResponse = {
+	labels: LabelOption[];
+	/** True when the server is configured to require labels from a namespace. */
+	requiresLabelMatch: boolean;
+};
+
+export type TeamOption = {
+	id: string;
+	key: string;
+	name: string;
 };
 
 export type IssuesQueryParams = {

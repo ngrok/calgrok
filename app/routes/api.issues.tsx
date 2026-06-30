@@ -1,11 +1,10 @@
+import { getLinearAuth } from "~/lib/linear.server";
 import {
 	fetchCalendarIssues,
 	updateIssueDueDate,
 	updateIssueLabels,
 	updateIssueState,
 } from "~/lib/linear-graphql.server";
-import { getLinearAuth } from "~/lib/linear.server";
-import { DEFAULT_TEAM_IDS } from "~/lib/teams";
 import type { Route } from "./+types/api.issues";
 
 // BFF resource route: the browser fetches issues from here (same-origin, cookie
@@ -25,7 +24,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 	}
 
 	const teamIdsParam = url.searchParams.get("teamIds");
-	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : DEFAULT_TEAM_IDS;
+	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : [];
+	if (teamIds.length === 0) {
+		throw new Response("Missing required 'teamIds' query param", { status: 400 });
+	}
 
 	const labelIdsParam = url.searchParams.get("labelIds");
 	const labelIds = labelIdsParam ? labelIdsParam.split(",").filter(Boolean) : [];

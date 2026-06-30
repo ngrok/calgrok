@@ -9,8 +9,8 @@ calgrok is the rebuild. It reads everything straight from the Linear API, shows
 your content issues on a month grid by their due date, and lets you reschedule
 with a drag or a click. It stores nothing of its own.
 
-_Built for how ngrok's GTM and Content teams work, but the code's here if it's
-useful to you._
+_Built for how ngrok's GTM and Content teams work, but configurable enough to
+run against another Linear workspace._
 
 ## What it does
 
@@ -20,8 +20,9 @@ useful to you._
   optimistically (it moves instantly and rolls back if Linear says no).
 - Opens any issue in a modal to read the description and edit its due date or
   tags, including clearing the date to drop it off the calendar.
-- Filters by team and by content-type label, and remembers view options (show
-  weekends, completed, and sub-tasks) between visits.
+- Discovers teams from Linear after login, filters by explicit team selection
+  and label, and remembers view options (show weekends, completed, and
+  sub-tasks) between visits.
 
 ## How it works
 
@@ -44,13 +45,15 @@ You'll need your own Linear OAuth app and a Linear workspace to point it at.
    `write` scopes.
 2. Copy `.env.example` to `.env` and fill in `LINEAR_CLIENT_ID`,
    `LINEAR_CLIENT_SECRET`, `LINEAR_REDIRECT_URI`, and a `SESSION_SECRET`.
+   Optionally set `LINEAR_LABEL_NAMESPACE` if you want to scope the calendar to
+   a label namespace such as `con/`.
 3. Install and run:
    ```bash
    pnpm install
    pnpm dev          # http://localhost:3000
    ```
-4. To deploy, build the container and supply the same four environment variables
-   at runtime:
+4. To deploy, build the container and supply the same environment variables at
+   runtime:
    ```bash
    docker build -t calgrok .
    docker run --rm -p 3000:3000 --env-file .env calgrok
@@ -60,15 +63,15 @@ You'll need your own Linear OAuth app and a Linear workspace to point it at.
 
 ### Adapt it to your workspace
 
-calgrok is wired to ngrok's setup, so a few things are worth changing for yours:
+calgrok discovers Linear teams after login. Select the teams you want in the UI;
+that selection is stored in your browser and no issues are fetched until at
+least one team has been selected.
 
-- The teams it shows live in [`app/lib/teams.ts`](./app/lib/teams.ts) as Linear
-  team names and ids. Swap in your own.
-- The calendar only shows issues tagged with a content type. We namespace those
-  labels under `con/` and surface `blog`, `newsletter`, `socials`, `video`, and
-  `web`. Change the namespace in
-  [`app/routes/api.labels.tsx`](./app/routes/api.labels.tsx) and the list in
-  [`app/lib/content-tags.ts`](./app/lib/content-tags.ts).
+By default, `LINEAR_LABEL_NAMESPACE` is blank, so the calendar shows dated
+issues from the selected teams and labels are optional filters. If you set
+`LINEAR_LABEL_NAMESPACE=con/`, only labels with that prefix are offered, the
+prefix is stripped in the UI, and unfiltered calendar views are scoped to issues
+with one of those labels.
 
 ## Repo layout
 
@@ -78,7 +81,7 @@ calgrok is wired to ngrok's setup, so a few things are worth changing for yours:
 │   ├── routes/        Pages, the OAuth flow, and the BFF API routes that proxy Linear.
 │   ├── features/
 │   │   └── calendar/  The month grid, issue cards, filters, modal, and data hooks.
-│   └── lib/           Server-side env, session, Linear client, and config (teams, tags).
+│   └── lib/           Server-side env, session, and Linear client helpers.
 ├── Dockerfile         Multi-stage production build.
 └── PLAN.md            The design and the milestone-by-milestone build log.
 ```

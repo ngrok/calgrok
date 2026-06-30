@@ -1,6 +1,7 @@
 import type { CalendarIssue, WorkflowState } from "~/features/calendar/types";
 
 export type RawLabel = { id: string; name: string; color: string; teamId: string | null };
+export type RawTeam = { id: string; key: string; name: string };
 
 const GRAPHQL_URL = "https://api.linear.app/graphql";
 
@@ -137,8 +138,8 @@ type LabelsData = {
 
 /**
  * All non-group labels with their owning team. Labels with the same name can
- * exist in multiple teams (e.g. `con/web` in both GTM and Content); the route
- * groups them for display while keeping each team's id.
+ * exist in multiple teams; the route groups them for display while keeping each
+ * team's id.
  */
 export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
 	const labels: RawLabel[] = [];
@@ -166,6 +167,45 @@ export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
 	}
 
 	return labels;
+}
+
+const TEAMS_QUERY = `
+query Teams($first: Int!, $after: String) {
+  viewer {
+    teams(first: $first, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id key name }
+    }
+  }
+}`;
+
+type TeamsData = {
+	viewer: {
+		teams: {
+			pageInfo: { hasNextPage: boolean; endCursor: string | null };
+			nodes: RawTeam[];
+		};
+	};
+};
+
+/** Teams the authenticated Linear user belongs to. */
+export async function fetchTeams(accessToken: string): Promise<RawTeam[]> {
+	const teams: RawTeam[] = [];
+	let after: string | null = null;
+
+	for (let page = 0; page < 20; page++) {
+		const result: TeamsData = await linearGraphQL<TeamsData>(accessToken, TEAMS_QUERY, {
+			first: 250,
+			after,
+		});
+		teams.push(...result.viewer.teams.nodes);
+		if (!result.viewer.teams.pageInfo.hasNextPage) {
+			break;
+		}
+		after = result.viewer.teams.pageInfo.endCursor;
+	}
+
+	return teams.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 const WORKFLOW_STATES_QUERY = `
