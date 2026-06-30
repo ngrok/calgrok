@@ -15,7 +15,10 @@ export type CalendarFilters = {
 	setLabelIds: (ids: string[]) => void;
 };
 
-export function useCalendarFilters(teams: TeamOption[]): CalendarFilters {
+export function useCalendarFilters(
+	teams: TeamOption[],
+	defaultTeamIds: string[],
+): CalendarFilters {
 	const [teamIds, setTeamIds] = useState<string[]>([]);
 	const [labelIds, setLabelIdsState] = useState<string[]>([]);
 	const loadedStoredTeams = useRef(false);
@@ -27,15 +30,19 @@ export function useCalendarFilters(teams: TeamOption[]): CalendarFilters {
 		const validIds = new Set(teams.map((team) => team.id));
 		try {
 			const raw = localStorage.getItem(TEAM_STORAGE_KEY);
-			const parsed = raw ? JSON.parse(raw) : [];
+			const parsed = raw ? JSON.parse(raw) : null;
 			if (Array.isArray(parsed)) {
+				// A stored value (even an empty one — the user cleared it) wins.
 				setTeamIds(parsed.filter((id): id is string => typeof id === "string" && validIds.has(id)));
+			} else {
+				// No prior selection: seed from the configured default teams.
+				setTeamIds(defaultTeamIds.filter((id) => validIds.has(id)));
 			}
 		} catch {
 			// ignore malformed storage
 		}
 		loadedStoredTeams.current = true;
-	}, [teams]);
+	}, [teams, defaultTeamIds]);
 
 	useEffect(() => {
 		if (!loadedStoredTeams.current) {

@@ -171,24 +171,23 @@ export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
 
 const TEAMS_QUERY = `
 query Teams($first: Int!, $after: String) {
-  viewer {
-    teams(first: $first, after: $after) {
-      pageInfo { hasNextPage endCursor }
-      nodes { id key name }
-    }
+  teams(first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id key name }
   }
 }`;
 
 type TeamsData = {
-	viewer: {
-		teams: {
-			pageInfo: { hasNextPage: boolean; endCursor: string | null };
-			nodes: RawTeam[];
-		};
+	teams: {
+		pageInfo: { hasNextPage: boolean; endCursor: string | null };
+		nodes: RawTeam[];
 	};
 };
 
-/** Teams the authenticated Linear user belongs to. */
+// Every team the user can see in the workspace, not just ones they belong to —
+// so someone can monitor a team's calendar without joining it. Linear scopes
+// this to teams the viewer has access to (private teams they're not on are
+// excluded by the API).
 export async function fetchTeams(accessToken: string): Promise<RawTeam[]> {
 	const teams: RawTeam[] = [];
 	let after: string | null = null;
@@ -198,11 +197,11 @@ export async function fetchTeams(accessToken: string): Promise<RawTeam[]> {
 			first: 250,
 			after,
 		});
-		teams.push(...result.viewer.teams.nodes);
-		if (!result.viewer.teams.pageInfo.hasNextPage) {
+		teams.push(...result.teams.nodes);
+		if (!result.teams.pageInfo.hasNextPage) {
 			break;
 		}
-		after = result.viewer.teams.pageInfo.endCursor;
+		after = result.teams.pageInfo.endCursor;
 	}
 
 	return teams.sort((a, b) => a.name.localeCompare(b.name));

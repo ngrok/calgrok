@@ -8,8 +8,9 @@ import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
 export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
 	const teamsQuery = useTeams();
-	const teams = teamsQuery.data ?? [];
-	const filters = useCalendarFilters(teams);
+	const teams = teamsQuery.data?.teams ?? [];
+	const defaultTeamIds = teamsQuery.data?.defaultTeamIds ?? [];
+	const filters = useCalendarFilters(teams, defaultTeamIds);
 	const { labelIds, setLabelIds } = filters;
 	const { options, toggle } = useViewOptions();
 	const listRef = useRef<MonthListHandle>(null);
