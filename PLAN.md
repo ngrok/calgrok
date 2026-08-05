@@ -15,7 +15,8 @@ core of the design — not a polish step.
 - **Calendar unit:** issues, placed by `dueDate` (treated as publish date).
 - **Views:** month only (for now).
 - **Color coding:** by issue **status** (Linear workflow state color).
-- **Writes:** edit only — drag-and-drop to change `dueDate`. No issue creation.
+- **Writes:** drag-and-drop to change `dueDate`, edits from the issue modal, and
+  new issues created from the calendar (milestone 9).
 - **Filters:** by team (default GTM + Content), by label.
 - **Custom views:** saved in `localStorage`.
 
@@ -208,6 +209,17 @@ app/
      team-correct label.
    - Calendar shows only issues with a dueDate in the visible window; queries
      refetch on window focus so Linear edits surface without a manual reload.
+
+9. ✅ **Create issues** — a "New issue" button in the header (opens on today) and
+   a `+` on every day cell (opens on that day). The dialog sets title,
+   description, team, due date, status, priority, and tags, then `POST
+   /api/issue` → Linear `issueCreate`. Tags start empty and are picked per
+   issue; switching teams re-points the picked tags at that team's own label
+   ids, and the tag section warns when a namespace is configured and no tag is
+   set (the issue would not pass the calendar's own filter). The response
+   carries the new issue in
+   calendar shape, so it is written into every cached month that would show it
+   before the refetch lands.
 
 ## Resolved decisions
 
