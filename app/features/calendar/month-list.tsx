@@ -28,6 +28,7 @@ import { IssueDetailModal } from "./issue-detail-modal";
 import { MonthSection } from "./month-section";
 import { prefetchCalendarIssues, useUpdateDueDate } from "./queries";
 import type { CalendarIssue } from "./types";
+import { useToday } from "./use-today";
 import type { ViewOptions } from "./view-options";
 
 // How many months to render initially: one before "today" plus a few after, so
@@ -92,7 +93,7 @@ export const MonthList = forwardRef<
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
 	const issueFetchCount = useIsFetching({ queryKey: ["calendar", "issues"] });
-	const today = useMemo(() => new Date(), []);
+	const today = useToday();
 	const noTeams = teamIds.length === 0;
 
 	const [months, setMonths] = useState<Date[]>(() => {
