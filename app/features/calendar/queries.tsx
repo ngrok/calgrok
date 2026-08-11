@@ -10,7 +10,7 @@ import type {
 	CalendarIssue,
 	IssuesQueryParams,
 	LabelsResponse,
-	TeamOption,
+	TeamsResponse,
 	WorkflowState,
 } from "./types";
 
@@ -89,13 +89,12 @@ export function useLabels() {
 	});
 }
 
-async function fetchTeamsList(): Promise<TeamOption[]> {
+async function fetchTeamsList(): Promise<TeamsResponse> {
 	const res = await fetch("/api/teams", { headers: { Accept: "application/json" } });
 	if (!res.ok) {
 		throw new Error(`Failed to load teams (${res.status})`);
 	}
-	const json = (await res.json()) as { teams: TeamOption[] };
-	return json.teams;
+	return (await res.json()) as TeamsResponse;
 }
 
 export function useTeams() {

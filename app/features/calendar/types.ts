@@ -61,6 +61,12 @@ export type TeamOption = {
 	name: string;
 };
 
+export type TeamsResponse = {
+	teams: TeamOption[];
+	/** Team ids to preselect on first visit, from LINEAR_TEAM_DEFAULT. */
+	defaultTeamIds: string[];
+};
+
 export type IssuesQueryParams = {
 	/** Inclusive "YYYY-MM-DD". */
 	start: string;

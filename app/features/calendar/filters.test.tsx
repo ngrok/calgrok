@@ -33,14 +33,19 @@ describe("useCalendarFilters", () => {
 		localStorage.clear();
 	});
 
-	test("starts with no teams selected and no labels", () => {
-		const { result } = renderHook(() => useCalendarFilters(teams));
+	test("starts with no labels and no teams when no default is configured", () => {
+		const { result } = renderHook(() => useCalendarFilters(teams, []));
 		expect(result.current.teamIds).toEqual([]);
 		expect(result.current.labelIds).toEqual([]);
 	});
 
+	test("seeds the default teams on first visit and drops unknown ids", () => {
+		const { result } = renderHook(() => useCalendarFilters(teams, ["content", "old-team"]));
+		expect(result.current.teamIds).toEqual(["content"]);
+	});
+
 	test("toggleTeam removes then re-adds a team", () => {
-		const { result } = renderHook(() => useCalendarFilters(teams));
+		const { result } = renderHook(() => useCalendarFilters(teams, []));
 		const first = teams[0]?.id as string;
 
 		act(() => result.current.toggleTeam(first));
@@ -52,13 +57,20 @@ describe("useCalendarFilters", () => {
 
 	test("restores selected teams from localStorage and drops unknown ids", () => {
 		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify(["content", "old-team"]));
-		const { result } = renderHook(() => useCalendarFilters(teams));
+		const { result } = renderHook(() => useCalendarFilters(teams, ["gtm"]));
 
 		expect(result.current.teamIds).toEqual(["content"]);
 	});
 
+	test("a stored empty selection wins over the configured default", () => {
+		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify([]));
+		const { result } = renderHook(() => useCalendarFilters(teams, ["gtm"]));
+
+		expect(result.current.teamIds).toEqual([]);
+	});
+
 	test("toggleLabelGroup adds and removes all ids of a name together", () => {
-		const { result } = renderHook(() => useCalendarFilters(teams));
+		const { result } = renderHook(() => useCalendarFilters(teams, []));
 
 		act(() => result.current.toggleLabelGroup(["gtm-web", "content-web"]));
 		expect(result.current.labelIds).toEqual(["gtm-web", "content-web"]);
