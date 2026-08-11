@@ -1,8 +1,11 @@
 import { Button } from "@ngrok/mantle/button";
-import { useEffect, useMemo, useRef } from "react";
+import { Plus } from "@phosphor-icons/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
+import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
+import { NewIssueDialog } from "./new-issue-dialog";
 import { useLabels, useTeams } from "./queries";
 import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
@@ -79,6 +82,9 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 		labelsQuery.isSuccess &&
 		filters.teamIds.length > 0 &&
 		(!requiresLabelMatch || effectiveLabelIds.length > 0);
+	// The due date the new-issue dialog opens on; null while it's closed.
+	const [newIssueDate, setNewIssueDate] = useState<string | null>(null);
+	const openNewIssue = useCallback((dueDate: string) => setNewIssueDate(dueDate), []);
 	const issueQueryBlockedMessage = labelsQuery.isSuccess
 		? requiresLabelMatch && effectiveLabelIds.length === 0
 			? "No labels match the configured namespace."
@@ -105,6 +111,14 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 				<div className="ml-auto flex items-center gap-2">
 					<Button
 						type="button"
+						appearance="filled"
+						icon={<Plus />}
+						onClick={() => openNewIssue(toISODate(new Date()))}
+					>
+						New issue
+					</Button>
+					<Button
+						type="button"
 						appearance="outlined"
 						onClick={() => listRef.current?.scrollToToday()}
 					>
@@ -128,8 +142,15 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 					options={options}
 					canFetchIssues={canFetchIssues}
 					blockedMessage={issueQueryBlockedMessage}
+					onNewIssue={openNewIssue}
 				/>
 			</main>
+
+			<NewIssueDialog
+				date={newIssueDate}
+				onClose={() => setNewIssueDate(null)}
+				defaultTeamId={filters.teamIds[0] ?? null}
+			/>
 		</div>
 	);
 }

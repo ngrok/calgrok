@@ -33,9 +33,10 @@ export const MonthSection = forwardRef<
 		today: Date;
 		gridColsClass: string;
 		onOpenIssue: (issue: CalendarIssue) => void;
+		onNewIssue: (dueDate: string) => void;
 	}
 >(function MonthSection(
-	{ month, teamIds, labelIds, enabled, options, today, gridColsClass, onOpenIssue },
+	{ month, teamIds, labelIds, enabled, options, today, gridColsClass, onOpenIssue, onNewIssue },
 	ref,
 ) {
 	const range = useMemo(() => monthGridRange(month), [month]);
@@ -114,6 +115,7 @@ export const MonthSection = forwardRef<
 								isCurrentMonth={isSameMonth(day, month)}
 								isToday={isSameDay(day, today)}
 								onOpenIssue={onOpenIssue}
+								onNewIssue={onNewIssue}
 							/>
 						))}
 					</div>

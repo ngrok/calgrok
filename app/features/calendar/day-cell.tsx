@@ -1,5 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { cx } from "@ngrok/mantle/cx";
+import { Plus } from "@phosphor-icons/react";
+import { format } from "date-fns";
 import { forwardRef, memo, useState } from "react";
 import { toISODate } from "./date-utils";
 import { DraggableIssueCard } from "./draggable-issue-card";
@@ -17,8 +19,9 @@ export const DayCell = memo(
 			isCurrentMonth: boolean;
 			isToday: boolean;
 			onOpenIssue: (issue: CalendarIssue) => void;
+			onNewIssue: (dueDate: string) => void;
 		}
-	>(function DayCell({ date, issues, isCurrentMonth, isToday, onOpenIssue }, ref) {
+	>(function DayCell({ date, issues, isCurrentMonth, isToday, onOpenIssue, onNewIssue }, ref) {
 		// Each day is a drop target keyed by its ISO date (the new dueDate).
 		const { setNodeRef, isOver } = useDroppable({ id: toISODate(date) });
 		const [expanded, setExpanded] = useState(false);
@@ -38,13 +41,23 @@ export const DayCell = memo(
 			<div
 				ref={setRefs}
 				className={cx(
-					"flex min-h-28 flex-col gap-1.5 border-b border-l border-card-muted p-1.5 transition-colors",
+					"group flex min-h-28 flex-col gap-1.5 border-b border-l border-card-muted p-1.5 transition-colors",
 					!isCurrentMonth && "bg-card-hover/40",
 					isToday && "bg-filled-accent/5",
 					isOver && "bg-filled-accent/10 ring-1 ring-inset ring-accent-500",
 				)}
 			>
-				<div className="flex justify-end">
+				<div className="flex items-center justify-between">
+					{/* Quiet until the day is hovered or the button is focused, so the
+					    grid stays clean but a new issue is always one click away. */}
+					<button
+						type="button"
+						aria-label={`New issue on ${format(date, "MMMM d, yyyy")}`}
+						className="rounded p-0.5 text-muted opacity-0 transition-opacity hover:bg-card-hover hover:text-strong focus-visible:opacity-100 group-hover:opacity-100"
+						onClick={() => onNewIssue(toISODate(date))}
+					>
+						<Plus className="size-3.5" weight="bold" />
+					</button>
 					<span
 						className={cx(
 							"flex size-5 items-center justify-center rounded-full text-sm",

@@ -4,7 +4,7 @@ const AUTHORIZE_URL = "https://linear.app/oauth/authorize";
 const TOKEN_URL = "https://api.linear.app/oauth/token";
 const REVOKE_URL = "https://api.linear.app/oauth/revoke";
 
-const SCOPES = "read,write"; // write is required to update issue dueDate
+const SCOPES = "read,write"; // write is required to create issues and edit them
 
 export type LinearTokens = {
 	accessToken: string;

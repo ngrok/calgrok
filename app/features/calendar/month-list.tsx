@@ -83,8 +83,12 @@ export const MonthList = forwardRef<
 		options: ViewOptions;
 		canFetchIssues: boolean;
 		blockedMessage?: string;
+		onNewIssue: (dueDate: string) => void;
 	}
->(function MonthList({ teamIds, labelIds, options, canFetchIssues, blockedMessage }, ref) {
+>(function MonthList(
+	{ teamIds, labelIds, options, canFetchIssues, blockedMessage, onNewIssue },
+	ref,
+) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
 	const issueFetchCount = useIsFetching({ queryKey: ["calendar", "issues"] });
@@ -326,6 +330,7 @@ export const MonthList = forwardRef<
 									today={today}
 									gridColsClass={gridColsClass}
 									onOpenIssue={handleOpenIssue}
+									onNewIssue={onNewIssue}
 								/>
 							))}
 						</div>

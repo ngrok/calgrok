@@ -39,6 +39,23 @@ async function linearGraphQL<T>(
 	return json.data;
 }
 
+// Every field the calendar renders, shared by the list query and issueCreate so
+// a freshly created issue arrives in the same shape as a fetched one.
+const CALENDAR_ISSUE_FIELDS = `
+  id
+  identifier
+  title
+  dueDate
+  url
+  priority
+  priorityLabel
+  state { id name color type }
+  assignee { id name displayName avatarUrl }
+  labels { nodes { id name color } }
+  project { id name url }
+  team { id key name }
+  parent { id }`;
+
 // One query pulls every field the calendar renders, including nested
 // assignee/state/labels/project — avoiding the per-issue N+1 fetches that make
 // the @linear/sdk lazy accessors (and tools like LinCal) slow.
@@ -46,20 +63,7 @@ const CALENDAR_ISSUES_QUERY = `
 query CalendarIssues($filter: IssueFilter!, $first: Int!, $after: String) {
   issues(filter: $filter, first: $first, after: $after) {
     pageInfo { hasNextPage endCursor }
-    nodes {
-      id
-      identifier
-      title
-      dueDate
-      url
-      priority
-      priorityLabel
-      state { id name color type }
-      assignee { id name displayName avatarUrl }
-      labels { nodes { id name color } }
-      project { id name url }
-      team { id key name }
-      parent { id }
+    nodes {${CALENDAR_ISSUE_FIELDS}
     }
   }
 }`;
@@ -248,6 +252,46 @@ export async function fetchWorkflowStates(
 	}
 
 	return states;
+}
+
+const CREATE_ISSUE_MUTATION = `
+mutation CreateIssue($input: IssueCreateInput!) {
+  issueCreate(input: $input) {
+    success
+    issue {${CALENDAR_ISSUE_FIELDS}
+    }
+  }
+}`;
+
+export type NewIssueInput = {
+	teamId: string;
+	title: string;
+	description?: string;
+	/** "YYYY-MM-DD". Omitted, the issue is created without a place on the calendar. */
+	dueDate?: string;
+	labelIds?: string[];
+	/** Omitted, Linear uses the team's default state. */
+	stateId?: string;
+	priority?: number;
+};
+
+/**
+ * Create an issue and return it in calendar shape, so the caller can put the
+ * card on the grid without a second round trip.
+ */
+export async function createIssue(params: {
+	accessToken: string;
+	input: NewIssueInput;
+}): Promise<CalendarIssue> {
+	const data = await linearGraphQL<{
+		issueCreate: { success: boolean; issue: RawIssue | null };
+	}>(params.accessToken, CREATE_ISSUE_MUTATION, { input: params.input });
+
+	if (!data.issueCreate.success || !data.issueCreate.issue) {
+		throw new Error("Linear did not accept the new issue");
+	}
+	const issue = data.issueCreate.issue;
+	return { ...issue, labels: issue.labels.nodes };
 }
 
 const UPDATE_STATE_MUTATION = `

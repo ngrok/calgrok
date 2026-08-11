@@ -146,6 +146,94 @@ export function useIssueDescription(issueId: string | null) {
 
 const issuesQueryFilter = { queryKey: [ROOT, "issues"] } as const;
 
+export type NewIssueInput = {
+	teamId: string;
+	title: string;
+	description?: string;
+	/** "YYYY-MM-DD". */
+	dueDate?: string;
+	labelIds?: string[];
+	/** Omitted, Linear uses the team's default state. */
+	stateId?: string;
+	priority?: number;
+};
+
+async function postNewIssue(input: NewIssueInput): Promise<CalendarIssue> {
+	const res = await fetch("/api/issue", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to create issue (${res.status})`);
+	}
+	const json = (await res.json()) as { issue: CalendarIssue };
+	return json.issue;
+}
+
+/**
+ * A cached issues query carries its own window and filters in its key (see
+ * calendarKeys.issues), so we can tell whether a new issue is one that query
+ * would have returned.
+ */
+function issueBelongsToQuery(key: readonly unknown[], issue: CalendarIssue): boolean {
+	const [, , start, end, teamIds, labelIds] = key as [
+		string,
+		string,
+		string,
+		string,
+		string,
+		string,
+	];
+	// ISO dates compare correctly as strings.
+	if (!issue.dueDate || issue.dueDate < start || issue.dueDate > end) {
+		return false;
+	}
+	if (teamIds && !teamIds.split(",").includes(issue.team.id)) {
+		return false;
+	}
+	if (labelIds) {
+		const filtered = new Set(labelIds.split(","));
+		return issue.labels.some((label) => filtered.has(label.id));
+	}
+	return true;
+}
+
+/**
+ * Create an issue in Linear. The response carries the created issue, so we drop
+ * it straight into every cached month that would show it and the card appears
+ * without waiting for the refetch that follows.
+ */
+export function useCreateIssue() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: postNewIssue,
+		onSuccess: (issue) => {
+			for (const [key, data] of queryClient.getQueriesData<CalendarIssue[]>(issuesQueryFilter)) {
+				if (data && issueBelongsToQuery(key, issue)) {
+					queryClient.setQueryData<CalendarIssue[]>(key, [...data, issue]);
+				}
+			}
+			makeToast(
+				<Toast.Root priority="success">
+					<Toast.Message>Created {issue.identifier}.</Toast.Message>
+				</Toast.Root>,
+			);
+		},
+		onError: () => {
+			makeToast(
+				<Toast.Root priority="danger">
+					<Toast.Message>We couldn't create that issue.</Toast.Message>
+				</Toast.Root>,
+			);
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries(issuesQueryFilter);
+		},
+	});
+}
+
 async function postDueDate(issueId: string, dueDate: string): Promise<void> {
 	const res = await fetch("/api/issues", {
 		method: "POST",

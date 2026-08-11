@@ -20,6 +20,9 @@ run against another Linear workspace._
   optimistically (it moves instantly and rolls back if Linear says no).
 - Opens any issue in a modal to read the description and edit its due date or
   tags, including clearing the date to drop it off the calendar.
+- Creates issues without leaving the calendar: hover a day and hit `+` (or use
+  the header button) to set a title, description, team, due date, status,
+  priority, and tags.
 - Discovers teams from Linear after login, filters by explicit team selection
   and label, and remembers view options (show weekends, completed, and
   sub-tasks) between visits.
