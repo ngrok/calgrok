@@ -1,5 +1,5 @@
-import { createIssue, fetchIssueDetail, type NewIssueInput } from "~/lib/linear-graphql.server";
 import { getLinearAuth } from "~/lib/linear.server";
+import { createIssue, fetchIssueDetail, type NewIssueInput } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.issue";
 
 // Linear's priority scale: 0 none, 1 urgent, 2 high, 3 medium, 4 low.
@@ -18,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 		throw new Response("Missing 'id' query param", { status: 400 });
 	}
 
-	const detail = await fetchIssueDetail(auth.accessToken, id);
+	const detail = await fetchIssueDetail(auth.authorization, id);
 	return Response.json(detail, auth.headers ? { headers: auth.headers } : undefined);
 }
 
@@ -48,7 +48,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 	const description = body.description?.trim();
 	const issue = await createIssue({
-		accessToken: auth.accessToken,
+		authorization: auth.authorization,
 		input: {
 			teamId: body.teamId,
 			title,

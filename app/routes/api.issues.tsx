@@ -33,7 +33,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const labelIds = labelIdsParam ? labelIdsParam.split(",").filter(Boolean) : [];
 
 	const issues = await fetchCalendarIssues({
-		accessToken: auth.accessToken,
+		authorization: auth.authorization,
 		teamIds,
 		labelIds,
 		start,
@@ -71,21 +71,21 @@ export async function action({ request }: Route.ActionArgs) {
 
 	if (hasDueDate) {
 		await updateIssueDueDate({
-			accessToken: auth.accessToken,
+			authorization: auth.authorization,
 			issueId: body.issueId,
 			dueDate: body.dueDate ?? null,
 		});
 	}
 	if (hasLabels) {
 		await updateIssueLabels({
-			accessToken: auth.accessToken,
+			authorization: auth.authorization,
 			issueId: body.issueId,
 			labelIds: body.labelIds as string[],
 		});
 	}
 	if (hasState) {
 		await updateIssueState({
-			accessToken: auth.accessToken,
+			authorization: auth.authorization,
 			issueId: body.issueId,
 			stateId: body.stateId as string,
 		});

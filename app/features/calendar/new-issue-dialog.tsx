@@ -73,7 +73,8 @@ function NewIssueForm({
 	onCancel: () => void;
 }) {
 	const formId = useId();
-	const { data: teams = [] } = useTeams();
+	const { data: teamsData } = useTeams();
+	const teams = teamsData?.teams ?? [];
 	const { data: labelConfig } = useLabels();
 	const labelOptions = labelConfig?.labels ?? [];
 	const requiresLabelMatch = labelConfig?.requiresLabelMatch ?? false;

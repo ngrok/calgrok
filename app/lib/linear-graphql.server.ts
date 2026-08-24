@@ -8,7 +8,7 @@ const GRAPHQL_URL = "https://api.linear.app/graphql";
 type GraphQLResponse<T> = { data?: T; errors?: { message: string }[] };
 
 async function linearGraphQL<T>(
-	accessToken: string,
+	authorization: string,
 	query: string,
 	variables: Record<string, unknown>,
 ): Promise<T> {
@@ -16,7 +16,7 @@ async function linearGraphQL<T>(
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			Authorization: `Bearer ${accessToken}`,
+			Authorization: authorization,
 		},
 		body: JSON.stringify({ query, variables }),
 	});
@@ -80,7 +80,7 @@ type CalendarIssuesData = {
 };
 
 export async function fetchCalendarIssues(params: {
-	accessToken: string;
+	authorization: string;
 	teamIds: string[];
 	labelIds?: string[];
 	start: string;
@@ -103,7 +103,7 @@ export async function fetchCalendarIssues(params: {
 	// runaway guard.
 	for (let page = 0; page < 20; page++) {
 		const result: CalendarIssuesData = await linearGraphQL<CalendarIssuesData>(
-			params.accessToken,
+			params.authorization,
 			CALENDAR_ISSUES_QUERY,
 			{ filter, first: 250, after },
 		);
@@ -145,12 +145,12 @@ type LabelsData = {
  * exist in multiple teams; the route groups them for display while keeping each
  * team's id.
  */
-export async function fetchLabels(accessToken: string): Promise<RawLabel[]> {
+export async function fetchLabels(authorization: string): Promise<RawLabel[]> {
 	const labels: RawLabel[] = [];
 	let after: string | null = null;
 
 	for (let page = 0; page < 20; page++) {
-		const result: LabelsData = await linearGraphQL<LabelsData>(accessToken, LABELS_QUERY, {
+		const result: LabelsData = await linearGraphQL<LabelsData>(authorization, LABELS_QUERY, {
 			first: 250,
 			after,
 		});
@@ -192,12 +192,12 @@ type TeamsData = {
 // so someone can monitor a team's calendar without joining it. Linear scopes
 // this to teams the viewer has access to (private teams they're not on are
 // excluded by the API).
-export async function fetchTeams(accessToken: string): Promise<RawTeam[]> {
+export async function fetchTeams(authorization: string): Promise<RawTeam[]> {
 	const teams: RawTeam[] = [];
 	let after: string | null = null;
 
 	for (let page = 0; page < 20; page++) {
-		const result: TeamsData = await linearGraphQL<TeamsData>(accessToken, TEAMS_QUERY, {
+		const result: TeamsData = await linearGraphQL<TeamsData>(authorization, TEAMS_QUERY, {
 			first: 250,
 			after,
 		});
@@ -228,7 +228,7 @@ type WorkflowStatesData = {
 
 /** Workflow states (statuses) for the given teams, each carrying its team id. */
 export async function fetchWorkflowStates(
-	accessToken: string,
+	authorization: string,
 	teamIds: string[],
 ): Promise<(WorkflowState & { teamId: string })[]> {
 	const states: (WorkflowState & { teamId: string })[] = [];
@@ -236,7 +236,7 @@ export async function fetchWorkflowStates(
 
 	for (let page = 0; page < 20; page++) {
 		const result: WorkflowStatesData = await linearGraphQL<WorkflowStatesData>(
-			accessToken,
+			authorization,
 			WORKFLOW_STATES_QUERY,
 			{ teamIds, first: 250, after },
 		);
@@ -279,12 +279,12 @@ export type NewIssueInput = {
  * card on the grid without a second round trip.
  */
 export async function createIssue(params: {
-	accessToken: string;
+	authorization: string;
 	input: NewIssueInput;
 }): Promise<CalendarIssue> {
 	const data = await linearGraphQL<{
 		issueCreate: { success: boolean; issue: RawIssue | null };
-	}>(params.accessToken, CREATE_ISSUE_MUTATION, { input: params.input });
+	}>(params.authorization, CREATE_ISSUE_MUTATION, { input: params.input });
 
 	if (!data.issueCreate.success || !data.issueCreate.issue) {
 		throw new Error("Linear did not accept the new issue");
@@ -301,12 +301,12 @@ mutation UpdateState($id: String!, $stateId: String!) {
 }`;
 
 export async function updateIssueState(params: {
-	accessToken: string;
+	authorization: string;
 	issueId: string;
 	stateId: string;
 }): Promise<void> {
 	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
-		params.accessToken,
+		params.authorization,
 		UPDATE_STATE_MUTATION,
 		{ id: params.issueId, stateId: params.stateId },
 	);
@@ -323,13 +323,13 @@ mutation UpdateDueDate($id: String!, $dueDate: TimelessDate) {
 }`;
 
 export async function updateIssueDueDate(params: {
-	accessToken: string;
+	authorization: string;
 	issueId: string;
 	/** A "YYYY-MM-DD" date, or null to clear it (removes the issue from the calendar). */
 	dueDate: string | null;
 }): Promise<void> {
 	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
-		params.accessToken,
+		params.authorization,
 		UPDATE_DUE_DATE_MUTATION,
 		{ id: params.issueId, dueDate: params.dueDate },
 	);
@@ -348,12 +348,12 @@ mutation UpdateLabels($id: String!, $labelIds: [String!]) {
 // Note: issueUpdate replaces the entire label set. Callers must pass the full
 // desired list (the modal merges kept non-namespace labels with edited ones).
 export async function updateIssueLabels(params: {
-	accessToken: string;
+	authorization: string;
 	issueId: string;
 	labelIds: string[];
 }): Promise<void> {
 	const data = await linearGraphQL<{ issueUpdate: { success: boolean } }>(
-		params.accessToken,
+		params.authorization,
 		UPDATE_LABELS_MUTATION,
 		{ id: params.issueId, labelIds: params.labelIds },
 	);
@@ -371,11 +371,11 @@ query IssueDetail($id: String!) {
 }`;
 
 export async function fetchIssueDetail(
-	accessToken: string,
+	authorization: string,
 	issueId: string,
 ): Promise<{ description: string | null }> {
 	const data = await linearGraphQL<{ issue: { id: string; description: string | null } }>(
-		accessToken,
+		authorization,
 		ISSUE_DETAIL_QUERY,
 		{ id: issueId },
 	);

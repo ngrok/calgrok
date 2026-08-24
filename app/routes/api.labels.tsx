@@ -18,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const namespace = env.LINEAR_LABEL_NAMESPACE;
 	const namespaceLower = namespace.toLowerCase();
 	const groups = new Map<string, LabelOption>();
-	for (const label of await fetchLabels(auth.accessToken)) {
+	for (const label of await fetchLabels(auth.authorization)) {
 		const matchesNamespace = Boolean(
 			namespace && label.name.toLowerCase().startsWith(namespaceLower),
 		);

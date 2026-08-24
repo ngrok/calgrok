@@ -1,6 +1,7 @@
 import { Toaster } from "@ngrok/mantle/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import type { LinksFunction } from "react-router";
 import {
 	isRouteErrorResponse,
 	Links,
@@ -9,7 +10,6 @@ import {
 	Scripts,
 	ScrollRestoration,
 } from "react-router";
-import type { LinksFunction } from "react-router";
 import stylesheet from "./app.css?url";
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
@@ -71,7 +71,16 @@ export function ErrorBoundary({ error }: { error: unknown }) {
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-2 p-8 text-center">
 			<h1 className="text-2xl font-medium text-strong">{title}</h1>
-			<p className="text-muted">{detail}</p>
+			{/* Startup and configuration errors arrive as several formatted lines
+			    (see lib/env.server). Keep their line breaks instead of collapsing
+			    the guidance into one paragraph. */}
+			{detail.includes("\n") ? (
+				<pre className="max-w-full overflow-x-auto whitespace-pre-wrap text-left text-sm text-muted">
+					{detail}
+				</pre>
+			) : (
+				<p className="text-muted">{detail}</p>
+			)}
 		</main>
 	);
 }

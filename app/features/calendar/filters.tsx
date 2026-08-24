@@ -15,13 +15,14 @@ export type CalendarFilters = {
 	setLabelIds: (ids: string[]) => void;
 };
 
-export function useCalendarFilters(
-	teams: TeamOption[],
-	defaultTeamIds: string[],
-): CalendarFilters {
+export function useCalendarFilters(teams: TeamOption[], defaultTeamIds: string[]): CalendarFilters {
 	const [teamIds, setTeamIds] = useState<string[]>([]);
 	const [labelIds, setLabelIdsState] = useState<string[]>([]);
 	const loadedStoredTeams = useRef(false);
+	// Only a real toggle should be written to storage. Persisting the seeded
+	// value would store [] on a first visit that hasn't been interacted with,
+	// and a stored [] outranks LINEAR_TEAM_DEFAULT forever after.
+	const userChangedTeams = useRef(false);
 
 	useEffect(() => {
 		if (loadedStoredTeams.current || teams.length === 0) {
@@ -56,7 +57,7 @@ export function useCalendarFilters(
 	}, [teams]);
 
 	useEffect(() => {
-		if (!loadedStoredTeams.current) {
+		if (!loadedStoredTeams.current || !userChangedTeams.current) {
 			return;
 		}
 		try {
@@ -71,6 +72,7 @@ export function useCalendarFilters(
 	}, []);
 
 	function toggleTeam(id: string) {
+		userChangedTeams.current = true;
 		setTeamIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
 	}
 	// A label name can map to several ids across teams; toggle them together.
@@ -172,8 +174,12 @@ export function FilterBar({
 						) : null}
 					</div>
 
-					{labels.length === 0 ? (
-						<p className="px-1 text-xs text-muted">No labels found.</p>
+					{/* Labels are scoped to the selected teams, so an empty list before any
+					    team is picked means "not yet", not "none exist". */}
+					{teamIds.length === 0 ? (
+						<p className="px-1 text-xs text-muted">Select a team first.</p>
+					) : labels.length === 0 ? (
+						<p className="px-1 text-xs text-muted">No labels found for the selected teams.</p>
 					) : (
 						labels.map((option) => {
 							const checkboxId = `label-filter-${option.ids.join("-")}`;

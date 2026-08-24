@@ -69,6 +69,29 @@ describe("useCalendarFilters", () => {
 		expect(result.current.teamIds).toEqual([]);
 	});
 
+	test("an untouched first visit stores nothing, so a default can still apply later", () => {
+		renderHook(() => useCalendarFilters(teams, []));
+
+		// Storing [] here would outrank LINEAR_TEAM_DEFAULT on every later visit.
+		expect(localStorage.getItem("calgrok:team-ids:v1")).toBeNull();
+	});
+
+	test("the seeded default is not written to storage", () => {
+		const { result } = renderHook(() => useCalendarFilters(teams, ["content"]));
+
+		expect(result.current.teamIds).toEqual(["content"]);
+		expect(localStorage.getItem("calgrok:team-ids:v1")).toBeNull();
+	});
+
+	test("clearing the last team by hand is remembered", () => {
+		const { result } = renderHook(() => useCalendarFilters(teams, ["content"]));
+
+		act(() => result.current.toggleTeam("content"));
+
+		expect(result.current.teamIds).toEqual([]);
+		expect(localStorage.getItem("calgrok:team-ids:v1")).toBe("[]");
+	});
+
 	test("toggleLabelGroup adds and removes all ids of a name together", () => {
 		const { result } = renderHook(() => useCalendarFilters(teams, []));
 

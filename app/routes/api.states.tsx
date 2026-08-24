@@ -18,6 +18,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 		throw new Response("Missing required 'teamIds' query param", { status: 400 });
 	}
 
-	const states = await fetchWorkflowStates(auth.accessToken, teamIds);
+	const states = await fetchWorkflowStates(auth.authorization, teamIds);
 	return Response.json({ states }, auth.headers ? { headers: auth.headers } : undefined);
 }
