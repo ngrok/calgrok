@@ -1,22 +1,20 @@
 import { Button } from "@ngrok/mantle/button";
 import { Plus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form } from "react-router";
 import { Wordmark } from "~/components/wordmark";
 import type { AuthMode } from "~/lib/auth-mode";
 import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
 import { NewIssueDialog } from "./new-issue-dialog";
+import { OptionsMenu } from "./options-menu";
 import { useLabels, useTeams } from "./queries";
-import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
+import { useViewOptions } from "./view-options";
 
 export function CalendarPage({
-	viewer,
 	organization,
 	authMode,
 }: {
-	viewer: { name: string; email: string };
 	organization: { name: string } | null;
 	authMode: AuthMode;
 }) {
@@ -117,8 +115,8 @@ export function CalendarPage({
 				</div>
 				{/* Everything that acts on the calendar lives in one cluster on the
 				    right, ordered by how far it reaches: filters narrow which issues
-				    load, view options change how they draw, Today and Refresh act on
-				    the current view, then the write action and the session. */}
+				    load, Today moves the current view, then the write action. Options
+				    holds the rest: view toggles, theme, refresh, and the session. */}
 				<div className="ml-auto flex flex-wrap items-center gap-2">
 					<FilterBar
 						teams={teams}
@@ -130,7 +128,6 @@ export function CalendarPage({
 						onToggleLabelGroup={filters.toggleLabelGroup}
 						onClearLabels={filters.clearLabels}
 					/>
-					<ViewOptionsMenu options={options} onToggle={toggle} />
 					<Button
 						type="button"
 						appearance="outlined"
@@ -138,9 +135,8 @@ export function CalendarPage({
 					>
 						Today
 					</Button>
-					<RefreshButton />
-					{/* Keeps the write action off the end of the row of controls, so
-					    it isn't a neighbour of Disconnect. */}
+					{/* Keeps the write action apart from the controls that only change
+					    what is already on screen. */}
 					<span aria-hidden="true" className="mx-1 h-6 border-l border-card" />
 					<Button
 						type="button"
@@ -150,19 +146,7 @@ export function CalendarPage({
 					>
 						New issue
 					</Button>
-					{/* A personal API key is server config, not a session: there is no
-					    per-user connection for the browser to drop. */}
-					{authMode === "oauth" ? (
-						<Form method="post" action="/auth/logout">
-							<Button
-								type="submit"
-								appearance="outlined"
-								title={`Disconnect ${viewer.name} from Linear`}
-							>
-								Disconnect
-							</Button>
-						</Form>
-					) : null}
+					<OptionsMenu options={options} onToggle={toggle} authMode={authMode} />
 				</div>
 			</header>
 

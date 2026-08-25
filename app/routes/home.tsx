@@ -115,13 +115,7 @@ export function InvalidApiKeyScreen() {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
 	if (loaderData.viewer) {
-		return (
-			<CalendarPage
-				viewer={loaderData.viewer}
-				organization={loaderData.organization}
-				authMode={loaderData.mode}
-			/>
-		);
+		return <CalendarPage organization={loaderData.organization} authMode={loaderData.mode} />;
 	}
 	return loaderData.mode === "apiKey" ? <InvalidApiKeyScreen /> : <ConnectScreen />;
 }

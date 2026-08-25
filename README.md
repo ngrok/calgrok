@@ -44,8 +44,10 @@ Slated:
   tags, including clearing the date to drop it off the calendar.
 - Creates issues without leaving the calendar. Hover a day, hit `+`, then set a
   title, team, due date, status, priority, and tags.
-- Finds your teams from Linear after you sign in, filters by team and label, and
-  remembers your view between visits.
+- Finds your teams from Linear after you sign in, and filters by team and label.
+- Keeps the rest behind one **Options** menu: the view toggles, the theme, a
+  manual sync, and signing out. Your view and theme persist between visits, and
+  the theme follows your system setting until you pick one.
 
 ## Quickstart
 
