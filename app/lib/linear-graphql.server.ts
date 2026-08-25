@@ -22,8 +22,11 @@ async function linearGraphQL<T>(
 	});
 
 	if (res.status === 401) {
-		// Token rejected — surface as 401 so the client can prompt re-auth.
-		throw new Response("Linear authorization expired", { status: 401 });
+		// There is no sign-in to retry, so a rejected key is a configuration
+		// problem: say which variable to look at.
+		throw new Response("Linear rejected LINEAR_API_KEY. Check the key and restart the server.", {
+			status: 401,
+		});
 	}
 	if (!res.ok) {
 		throw new Error(`Linear API error: ${res.status} ${await res.text()}`);

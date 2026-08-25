@@ -1,4 +1,4 @@
-import { getLinearAuth } from "~/lib/linear.server";
+import { linearAuthorization } from "~/lib/linear.server";
 import { createIssue, fetchIssueDetail, type NewIssueInput } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.issue";
 
@@ -8,29 +8,18 @@ const MAX_PRIORITY = 4;
 // BFF resource route for on-demand issue detail (the heavy `description` field
 // the calendar list query doesn't load).
 export async function loader({ request }: Route.LoaderArgs) {
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		throw new Response("Unauthorized", { status: 401 });
-	}
-
 	const id = new URL(request.url).searchParams.get("id");
 	if (!id) {
 		throw new Response("Missing 'id' query param", { status: 400 });
 	}
 
-	const detail = await fetchIssueDetail(auth.authorization, id);
-	return Response.json(detail, auth.headers ? { headers: auth.headers } : undefined);
+	return Response.json(await fetchIssueDetail(linearAuthorization, id));
 }
 
 // Create an issue: POST { teamId, title, description?, dueDate?, labelIds?,
 // stateId?, priority? } -> Linear issueCreate. Responds with the new issue in
 // calendar shape so the client can place the card immediately.
 export async function action({ request }: Route.ActionArgs) {
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		throw new Response("Unauthorized", { status: 401 });
-	}
-
 	const body = (await request.json()) as Partial<NewIssueInput>;
 	const title = body.title?.trim();
 	if (!body.teamId) {
@@ -48,7 +37,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 	const description = body.description?.trim();
 	const issue = await createIssue({
-		authorization: auth.authorization,
+		authorization: linearAuthorization,
 		input: {
 			teamId: body.teamId,
 			title,
@@ -60,5 +49,5 @@ export async function action({ request }: Route.ActionArgs) {
 		},
 	});
 
-	return Response.json({ issue }, auth.headers ? { headers: auth.headers } : undefined);
+	return Response.json({ issue });
 }

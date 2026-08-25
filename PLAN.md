@@ -9,6 +9,12 @@ This replaces "LinCal," which was slow and froze browser tabs. Performance is th
 reason for the rebuild, so the data-fetching and rendering strategy below is the
 core of the design — not a polish step.
 
+> **Historical.** This is the original design doc and build log, kept as written.
+> One decision has since been reversed: auth is a single personal API key, not
+> multi-user OAuth. Everything below about OAuth apps, token exchange, and the
+> session cookie describes code that no longer exists. See the README for how
+> calgrok authenticates now.
+
 ## Product decisions (locked)
 
 - **Auth:** OAuth, multi-user (people log in with their own Linear accounts).

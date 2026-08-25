@@ -1,8 +1,6 @@
 import { Button } from "@ngrok/mantle/button";
 import { Plus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form } from "react-router";
-import type { AuthMode } from "~/lib/auth-mode";
 import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
@@ -10,13 +8,7 @@ import { NewIssueDialog } from "./new-issue-dialog";
 import { useLabels, useTeams } from "./queries";
 import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
-export function CalendarPage({
-	viewer,
-	authMode,
-}: {
-	viewer: { name: string; email: string };
-	authMode: AuthMode;
-}) {
+export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
 	const teamsQuery = useTeams();
 	const teams = teamsQuery.data?.teams ?? [];
 	const defaultTeamIds = teamsQuery.data?.defaultTeamIds ?? [];
@@ -134,15 +126,6 @@ export function CalendarPage({
 					</Button>
 					<ViewOptionsMenu options={options} onToggle={toggle} />
 					<RefreshButton />
-					{/* A personal API key is server config, not a session — there is no
-					    per-user connection for the browser to drop. */}
-					{authMode === "oauth" ? (
-						<Form method="post" action="/auth/logout">
-							<Button type="submit" appearance="outlined">
-								Disconnect
-							</Button>
-						</Form>
-					) : null}
 				</div>
 			</header>
 

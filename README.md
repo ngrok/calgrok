@@ -24,105 +24,63 @@ calgrok:
   tags, including clearing the date to drop it off the calendar.
 - Creates issues without leaving the calendar. Hover a day and hit `+`, then set
   a title, team, due date, status, priority, and tags.
-- Discovers your teams from Linear after login, filters by team and label, and
-  remembers view options between visits.
+- Discovers your teams from Linear, filters by team and label, and remembers view
+  options between visits.
 
 ## Quickstart
 
-You need [Node](https://nodejs.org) 20 or newer and
-[pnpm](https://pnpm.io/installation).
+You need [Node](https://nodejs.org) 20 or newer,
+[pnpm](https://pnpm.io/installation), and a personal Linear API key from
+[linear.app/settings/api](https://linear.app/settings/api).
 
 ```bash
 git clone https://github.com/ngrok/calgrok.git
 cd calgrok
 pnpm install
-pnpm setup:env    # asks which setup you want, writes .env (not `pnpm setup`)
+pnpm setup:env    # asks for your API key, writes .env (not `pnpm setup`)
 pnpm dev          # http://localhost:3000
 ```
 
 Reload the page once on your first run. Vite optimizes dependencies during that
 first load, and until it finishes the page renders but its buttons do nothing.
 
-**Solo** takes a couple of minutes, as long as your Linear workspace lets members
-create API keys. If it doesn't, go straight to the **team** setup, which needs
-nobody's permission.
-
-### Solo: a personal API key
-
-One value, no OAuth app. Create a key at
-[linear.app/settings/api](https://linear.app/settings/api) and put it in `.env`:
+That's the whole setup. One variable, no OAuth app, no callback URL to register:
 
 ```
 LINEAR_API_KEY=lin_api_...
 ```
 
-There is no sign-in screen in this mode: calgrok acts as the key's owner and
-loads the calendar straight away. Keep it on `localhost` or behind your own
-access control, because everyone who reaches the server gets your read and write
-access to the workspace.
+There's no sign-in screen. calgrok acts as the key's owner and loads the calendar
+straight away.
 
+> [!WARNING]
+> **calgrok has no access control of its own.** Everyone who can reach the server
+> holds your Linear read and write access, and every issue they create or
+> reschedule is attributed to you. Keep it on `localhost`, or put authentication
+> in front of it before anyone else can reach it — see [Deploying](#deploying).
+
+> [!NOTE]
 > **Your workspace may not allow this.** Linear admins decide whether members can
-> create personal API keys, under **Settings > Administration > API > Member API
-> keys**. If that page won't issue you one, that's why. Use the OAuth setup
-> instead.
-
-### Team: a Linear OAuth app
-
-Each person signs in with their own Linear account and sees only what Linear
-already lets them see. This is the setup to deploy, and the one that works
-regardless of how your workspace restricts API keys.
-
-1. **[Create the OAuth app.][new-app]** That link pre-fills the name, the
-   homepage, and `http://localhost:3000/auth/linear/callback` as a redirect URI.
-   Add your deployed callback URL too, once you have one. calgrok requests the
-   `read` and `write` scopes when someone signs in.
-2. Put the client ID, the client secret, and the redirect URI in `.env`, along
-   with a `SESSION_SECRET` to sign the session cookie. `pnpm setup:env`
-   generates the secret for you.
-3. `pnpm dev`, then click **Connect Linear**.
-
-[new-app]: https://linear.app/settings/api/applications/new?oauth.client_name=calgrok&display.description=A+fast+content+calendar+that+runs+live+on+top+of+Linear&oauth.client_uri=https%3A%2F%2Fgithub.com%2Fngrok%2Fcalgrok&oauth.redirect_uris=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Flinear%2Fcallback&oauth.grant_types=authorization_code&distribution=private
-
-Make your own app rather than asking for ours: self-hosting needs the client
-*secret*, which can't be shared.
-
-#### Which workspace should own the app?
-
-The form registers the app in whichever Linear workspace you're in, and every
-admin of that workspace can then read its client secret. Hence Linear's
-[own advice](https://linear.app/developers/oauth-2-0-authentication):
-
-> It is highly recommended you create a workspace for the purpose of managing the
-> OAuth2 Application, as each admin user will have access.
-
-So either register it in the workspace you're planning in, which is simplest and
-works with `distribution=private`, or make a workspace of your own and switch the
-link to `distribution=public` so your day-job workspace can still authorize it.
-The second keeps the secret off your main workspace's admin surface and needs
-nobody's permission, at the cost of continuity: that workspace has to outlive
-your interest in it. It's the route we took for ngrok's own instance.
+> create personal API keys, under **Settings > Administration > API**. If that
+> page won't issue you one, that's why, and you'll need an admin to turn them
+> back on.
 
 ## Configuration
 
-Every value goes in `.env` (see [`.env.example`](./.env.example)). Set either
-`LINEAR_API_KEY` or the four OAuth values.
+Every value goes in `.env` (see [`.env.example`](./.env.example)).
 
 | Variable | Required | What it does |
 | --- | --- | --- |
-| `LINEAR_API_KEY` | Solo setup | A personal API key. Setting it makes calgrok single-user and turns off sign-in. Your admin may have disabled member API keys. |
-| `LINEAR_CLIENT_ID` | Team setup | OAuth app client ID. |
-| `LINEAR_CLIENT_SECRET` | Team setup | OAuth app client secret. Server-side only. |
-| `LINEAR_REDIRECT_URI` | Team setup | Must exactly match a redirect URI registered on the OAuth app. |
-| `SESSION_SECRET` | Team setup | Signs the cookie carrying each visitor's Linear tokens. Changing it signs everyone out. |
+| `LINEAR_API_KEY` | Yes | A personal API key from [linear.app/settings/api](https://linear.app/settings/api). calgrok acts as its owner, and the key stays server-side. |
 | `LINEAR_TEAM_DEFAULT` | No | Comma-separated team keys (for example, `GTM,CON`) preselected on a visitor's first load. |
 | `LINEAR_LABEL_NAMESPACE` | No | When set (for example, `con/`), scopes the calendar to labels under that prefix and strips it in the UI. |
 
 ### Adapting it to your workspace
 
-calgrok discovers your Linear teams after login and **fetches nothing until you
-select at least one**, so an empty calendar on first load usually means no team is
-picked yet. `LINEAR_TEAM_DEFAULT` seeds that selection, and every team the visitor
-can see stays available to toggle.
+calgrok discovers your Linear teams and **fetches nothing until you select at
+least one**, so an empty calendar on first load usually means no team is picked
+yet. `LINEAR_TEAM_DEFAULT` seeds that selection, and every team stays available
+to toggle.
 
 Leave `LINEAR_LABEL_NAMESPACE` blank and labels are just optional filters. Set it
 to `con/` and only those labels are offered, with the prefix stripped in the UI
@@ -130,8 +88,9 @@ and unfiltered views scoped to issues carrying one.
 
 ## Deploying
 
-Use the OAuth setup for anything other people can reach. `LINEAR_API_KEY` hands
-your own workspace access to every visitor.
+calgrok has no sign-in of its own, so anything other people can reach needs
+access control in front of it. Without one, every visitor holds your Linear read
+and write access.
 
 ### On ngrok Ship
 
@@ -144,17 +103,43 @@ than from an image you point it at, so start by forking.
 2. In the [ngrok dashboard](https://dashboard.ngrok.com/ship), create an app and
    connect your fork. Ship adds a build workflow to the fork, along with the
    registry credential it needs as a repository secret.
-3. Set the app's environment variables to the OAuth values from
-   [Configuration](#configuration).
-4. Push to your fork. The workflow builds the Dockerfile, pushes the image, and
+3. Set `LINEAR_API_KEY` on the app, plus whichever optional values from
+   [Configuration](#configuration) you want.
+4. Put OAuth on the endpoint with a [Traffic
+   Policy](https://ngrok.com/docs/traffic-policy/), so ngrok authenticates every
+   visitor before a request reaches calgrok:
+
+   ```yaml
+   on_http_request:
+     - actions:
+         - type: oauth
+           config:
+             provider: google
+     - expressions:
+         - "!actions.ngrok.oauth.identity.email.endsWith('@example.com')"
+       actions:
+         - type: deny
+           config:
+             status_code: 403
+   ```
+
+   The first rule makes everyone sign in with Google. The second turns away
+   anyone outside your domain. ngrok hosts the OAuth app, so there's no client ID
+   or secret to register. Other providers, and rules that check group membership
+   instead of a domain, are in the [`oauth` action
+   docs](https://ngrok.com/docs/traffic-policy/actions/oauth/).
+
+   Don't skip this step. It's the only thing standing between your Linear
+   workspace and the internet, and it's how our own instance runs: the endpoint
+   is gated to `@ngrok.com` Google accounts, so ngrok employees reach the
+   calendar and nobody else does.
+5. Push to your fork. The workflow builds the Dockerfile, pushes the image, and
    Ship deploys it.
-5. Add `https://<YOUR_SHIP_URL>/auth/linear/callback` to your Linear OAuth app's
-   redirect URIs, then point `LINEAR_REDIRECT_URI` at it.
 
-Ship serves HTTPS, which the session cookie needs in production. The Ship
-workflow already in this repo runs only for `ngrok/calgrok`, so it stays skipped
-in your fork and won't fight the one Ship writes for you.
+The Ship workflow already in this repo runs only for `ngrok/calgrok`, so it stays
+skipped in your fork and won't fight the one Ship writes for you.
 
+> [!NOTE]
 > **Forking is temporary.** Ship can't yet deploy a container image you point it
 > at. When it can, take a prebuilt calgrok image, set the environment variables,
 > and skip the fork.
@@ -168,25 +153,22 @@ docker build -t calgrok .
 docker run --rm -p 3000:3000 --env-file .env calgrok
 ```
 
-Two things to get right:
-
-- Serve it over HTTPS. The session cookie is marked `Secure` in production, so a
-  plain-HTTP deployment can never hold a login.
-- Register the deployed callback URL on your Linear OAuth app, and point
-  `LINEAR_REDIRECT_URI` at it.
+Bind it to `localhost` and leave it there, or front it with something that
+authenticates visitors. calgrok itself serves the calendar to whoever asks.
 
 ## How it works
 
 calgrok is a [React Router](https://reactrouter.com) app that talks to Linear
-from the server. In the OAuth setup, the token exchange and every Linear request
-happen server-side, so an access token lives in a signed, httpOnly cookie and
-never reaches the browser. There's no database: the server is a thin proxy in
-front of Linear, and the browser caches what it fetches for the session with
+from the server. The API key lives only in the server's environment and every
+Linear request is proxied, so the key never reaches the browser. There's no
+database: the server is a thin proxy in front of Linear, and the browser caches
+what it fetches for the session with
 [TanStack Query](https://tanstack.com/query). The UI uses
 [mantle](https://mantle.ngrok.com), ngrok's design system.
 
 [`PLAN.md`](./PLAN.md) is the original design doc and build log, including the
-performance work that was the whole reason for the rebuild.
+performance work that was the whole reason for the rebuild. It describes a
+multi-user OAuth flow, which calgrok no longer has.
 
 ## Development
 
@@ -206,10 +188,10 @@ CI runs lint, typecheck, tests, and the build on every pull request.
 ```
 .
 ├── app/
-│   ├── routes/        Pages, the OAuth flow, and the API routes that proxy Linear.
+│   ├── routes/        The calendar page and the API routes that proxy Linear.
 │   ├── features/
 │   │   └── calendar/  The month grid, cards, filters, modal, and data hooks.
-│   └── lib/           Env, session, and Linear client helpers.
+│   └── lib/           Env, the Linear client, and the GraphQL queries.
 ├── scripts/           pnpm setup:env.
 ├── .github/workflows/ CI and the ngrok Ship build.
 └── Dockerfile         Multi-stage production build.
