@@ -79,6 +79,23 @@ type CalendarIssuesData = {
 	};
 };
 
+export type RawSession = {
+	viewer: { name: string; email: string };
+	organization: { name: string; urlKey: string };
+};
+
+// Viewer and organization in one request. The header needs both on every load,
+// and the SDK's `client.viewer` / `client.organization` would cost two.
+const SESSION_QUERY = `
+query Session {
+  viewer { name email }
+  organization { name urlKey }
+}`;
+
+export async function fetchSession(authorization: string): Promise<RawSession> {
+	return linearGraphQL<RawSession>(authorization, SESSION_QUERY, {});
+}
+
 export async function fetchCalendarIssues(params: {
 	authorization: string;
 	teamIds: string[];

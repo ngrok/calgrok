@@ -7,8 +7,8 @@ describe("ConnectScreen", () => {
 	test("shows a Connect Linear link", () => {
 		const Stub = createRoutesStub([{ path: "/", Component: () => <ConnectScreen /> }]);
 		render(<Stub />);
-		expect(screen.getByRole("heading", { name: /calgrok/i })).toBeInTheDocument();
-		expect(screen.getByText(/choose teams and see issues/i)).toBeInTheDocument();
+		expect(screen.getByRole("heading", { name: /slated/i })).toBeInTheDocument();
+		expect(screen.getByText(/places them by due date/i)).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: /connect linear/i })).toHaveAttribute(
 			"href",
 			"/auth/linear",

@@ -2,6 +2,7 @@ import { Button } from "@ngrok/mantle/button";
 import { Plus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
+import { Wordmark } from "~/components/wordmark";
 import type { AuthMode } from "~/lib/auth-mode";
 import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
@@ -12,9 +13,11 @@ import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
 
 export function CalendarPage({
 	viewer,
+	organization,
 	authMode,
 }: {
 	viewer: { name: string; email: string };
+	organization: { name: string } | null;
 	authMode: AuthMode;
 }) {
 	const teamsQuery = useTeams();
@@ -101,22 +104,44 @@ export function CalendarPage({
 
 	return (
 		<div className="flex h-dvh flex-col">
-			<header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-card p-4 sm:p-6">
-				<div>
-					<h1 className="text-xl font-medium text-strong">calgrok</h1>
-					<p className="text-xs text-muted">{viewer.name}</p>
+			<header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-card p-4 sm:px-6 sm:py-4">
+				<div className="flex items-center gap-2">
+					<h1>
+						<Wordmark />
+					</h1>
+					{organization ? (
+						<span className="truncate text-xl tracking-tight text-muted">
+							@ {organization.name}
+						</span>
+					) : null}
 				</div>
-				<FilterBar
-					teams={teams}
-					teamsLoading={teamsQuery.isLoading}
-					teamIds={filters.teamIds}
-					labelIds={filters.labelIds}
-					labels={visibleLabels}
-					onToggleTeam={filters.toggleTeam}
-					onToggleLabelGroup={filters.toggleLabelGroup}
-					onClearLabels={filters.clearLabels}
-				/>
-				<div className="ml-auto flex items-center gap-2">
+				{/* Everything that acts on the calendar lives in one cluster on the
+				    right, ordered by how far it reaches: filters narrow which issues
+				    load, view options change how they draw, Today and Refresh act on
+				    the current view, then the write action and the session. */}
+				<div className="ml-auto flex flex-wrap items-center gap-2">
+					<FilterBar
+						teams={teams}
+						teamsLoading={teamsQuery.isLoading}
+						teamIds={filters.teamIds}
+						labelIds={filters.labelIds}
+						labels={visibleLabels}
+						onToggleTeam={filters.toggleTeam}
+						onToggleLabelGroup={filters.toggleLabelGroup}
+						onClearLabels={filters.clearLabels}
+					/>
+					<ViewOptionsMenu options={options} onToggle={toggle} />
+					<Button
+						type="button"
+						appearance="outlined"
+						onClick={() => listRef.current?.scrollToToday()}
+					>
+						Today
+					</Button>
+					<RefreshButton />
+					{/* Keeps the write action off the end of the row of controls, so
+					    it isn't a neighbour of Disconnect. */}
+					<span aria-hidden="true" className="mx-1 h-6 border-l border-card" />
 					<Button
 						type="button"
 						appearance="filled"
@@ -125,20 +150,15 @@ export function CalendarPage({
 					>
 						New issue
 					</Button>
-					<Button
-						type="button"
-						appearance="outlined"
-						onClick={() => listRef.current?.scrollToToday()}
-					>
-						Today
-					</Button>
-					<ViewOptionsMenu options={options} onToggle={toggle} />
-					<RefreshButton />
-					{/* A personal API key is server config, not a session — there is no
+					{/* A personal API key is server config, not a session: there is no
 					    per-user connection for the browser to drop. */}
 					{authMode === "oauth" ? (
 						<Form method="post" action="/auth/logout">
-							<Button type="submit" appearance="outlined">
+							<Button
+								type="submit"
+								appearance="outlined"
+								title={`Disconnect ${viewer.name} from Linear`}
+							>
 								Disconnect
 							</Button>
 						</Form>
