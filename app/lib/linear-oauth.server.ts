@@ -33,6 +33,55 @@ export function buildAuthorizeUrl(state: string): string {
 	return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
+/**
+ * Turn Linear's OAuth error codes into something the reader can act on. These
+ * surface during setup, when a value in .env is most likely to be wrong, and
+ * Linear's own wording ("Invalid secret") doesn't say which variable to look at.
+ */
+export function explainTokenFailure(status: number, payload: string): string {
+	let code = "";
+	try {
+		code = (JSON.parse(payload) as { error?: string }).error ?? "";
+	} catch {
+		// Not JSON. Fall through to the generic message.
+	}
+
+	switch (code) {
+		case "invalid_secret":
+			return [
+				"Linear rejected LINEAR_CLIENT_SECRET.",
+				"",
+				"Copy the current client secret from your OAuth app's settings into .env,",
+				"then restart the server. If you rotate the secret, update every deployment",
+				"that uses it at the same time, or they stop being able to sign anyone in.",
+			].join("\n");
+		case "invalid_client":
+			return [
+				"Linear does not recognize LINEAR_CLIENT_ID.",
+				"",
+				"Check it against your OAuth app's settings. If you registered the app in a",
+				"different Linear workspace, switch to that workspace to find it.",
+			].join("\n");
+		case "invalid_grant":
+			return [
+				"Linear rejected the authorization code.",
+				"",
+				"Codes are single-use and short-lived. Start the sign-in again.",
+			].join("\n");
+		case "invalid_request":
+			return [
+				"Linear rejected the token request.",
+				"",
+				"LINEAR_REDIRECT_URI has to match a redirect URI registered on the OAuth app",
+				"exactly, including the scheme and port.",
+				"",
+				`Linear said: ${payload}`,
+			].join("\n");
+		default:
+			return `Linear token request failed: ${status} ${payload}`;
+	}
+}
+
 async function requestTokens(
 	body: URLSearchParams,
 	previousRefreshToken?: string,
@@ -43,7 +92,13 @@ async function requestTokens(
 		body,
 	});
 	if (!res.ok) {
-		throw new Error(`Linear token request failed: ${res.status} ${await res.text()}`);
+		// A thrown Response gives the error screen a heading that reads as a setup
+		// problem rather than a crash. Refresh failures are caught by the caller,
+		// which sends the visitor back through sign-in instead.
+		throw new Response(explainTokenFailure(res.status, await res.text()), {
+			status: 500,
+			statusText: "Linear sign-in failed",
+		});
 	}
 	const json = (await res.json()) as TokenResponse;
 	return {

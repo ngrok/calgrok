@@ -13,7 +13,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const teams = await fetchTeams(auth.accessToken);
+	const teams = await fetchTeams(auth.authorization);
 	const defaultKeys = new Set(env.LINEAR_TEAM_DEFAULT.map((key) => key.toUpperCase()));
 	const defaultTeamIds = teams
 		.filter((team) => defaultKeys.has(team.key.toUpperCase()))

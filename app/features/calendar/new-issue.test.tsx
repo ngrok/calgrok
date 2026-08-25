@@ -44,7 +44,7 @@ const created: CalendarIssue = {
 
 function seededClient(): QueryClient {
 	const queryClient = new QueryClient();
-	queryClient.setQueryData(["calendar", "teams"], teams);
+	queryClient.setQueryData(["calendar", "teams"], { teams, defaultTeamIds: [] });
 	queryClient.setQueryData(["calendar", "labels"], { labels, requiresLabelMatch: true });
 	queryClient.setQueryData(["calendar", "states", "gtm"], states);
 	return queryClient;
