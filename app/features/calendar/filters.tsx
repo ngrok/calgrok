@@ -2,9 +2,10 @@ import { Button } from "@ngrok/mantle/button";
 import { Checkbox } from "@ngrok/mantle/checkbox";
 import { Popover } from "@ngrok/mantle/popover";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readStored } from "~/lib/storage";
 import type { LabelOption, TeamOption } from "./types";
 
-const TEAM_STORAGE_KEY = "calgrok:team-ids:v1";
+const TEAM_STORAGE_KEY = "slated:team-ids:v1";
 
 export type CalendarFilters = {
 	teamIds: string[];
@@ -30,7 +31,7 @@ export function useCalendarFilters(teams: TeamOption[], defaultTeamIds: string[]
 		}
 		const validIds = new Set(teams.map((team) => team.id));
 		try {
-			const raw = localStorage.getItem(TEAM_STORAGE_KEY);
+			const raw = readStored(TEAM_STORAGE_KEY);
 			const parsed = raw ? JSON.parse(raw) : null;
 			if (Array.isArray(parsed)) {
 				// A stored value (even an empty one — the user cleared it) wins.

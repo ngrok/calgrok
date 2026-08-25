@@ -6,7 +6,7 @@ import "dotenv/config";
 import type { AuthMode } from "./auth-mode";
 
 /**
- * calgrok reaches Linear one of two ways:
+ * Slated reaches Linear one of two ways:
  *
  * - `apiKey` — a personal API key in `LINEAR_API_KEY`. Single-user: every
  *   visitor acts as the key's owner, so run this locally or behind your own
@@ -39,14 +39,14 @@ if (authMode === "oauth") {
 	if (missing.length > 0) {
 		throw new Error(
 			[
-				`calgrok cannot start. Missing environment variables: ${missing.join(", ")}.`,
+				`Slated cannot start. Missing environment variables: ${missing.join(", ")}.`,
 				"",
 				"Choose one of two setups:",
 				"",
-				"  Solo — one variable, no OAuth app. You act as yourself:",
+				"  Solo: one variable, no OAuth app. You act as yourself.",
 				"    LINEAR_API_KEY=lin_api_...  (create one at https://linear.app/settings/api)",
 				"",
-				"  Team — multi-user OAuth, each person signs in as themselves. Needs all of:",
+				"  Team: multi-user OAuth, each person signs in as themselves. Needs all of these.",
 				`    ${OAUTH_VARS.join(", ")}`,
 				"    (create the app at https://linear.app/settings/api/applications/new)",
 				"",

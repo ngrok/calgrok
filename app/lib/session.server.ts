@@ -15,7 +15,7 @@ type SessionData = {
 // travel over HTTPS in production. No server-side/database token storage.
 const storage = createCookieSessionStorage<SessionData>({
 	cookie: {
-		name: "calgrok_session",
+		name: "slated_session",
 		httpOnly: true,
 		path: "/",
 		sameSite: "lax",

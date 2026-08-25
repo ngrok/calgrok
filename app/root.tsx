@@ -25,7 +25,14 @@ import {
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
+export const links: LinksFunction = () => [
+	{ rel: "stylesheet", href: stylesheet },
+	// SVG first for browsers that take it; .ico is the fallback for those that
+	// don't, and is what Windows and older Safari pick up.
+	{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+	{ rel: "icon", href: "/favicon.ico", sizes: "48x48 32x32 16x16" },
+	{ rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+];
 
 /*
  * app.css only carries the light theme. Mantle ships the other three as
@@ -60,6 +67,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<MantleStyleSheets {...themeUrls} ssrCookie={rootData?.themeCookie} />
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				{/* The brand blue, for the browser chrome on Android and on macOS
+				    Safari's tab bar. */}
+				<meta name="theme-color" content="#0078C4" />
 				<Meta />
 				<Links />
 			</head>

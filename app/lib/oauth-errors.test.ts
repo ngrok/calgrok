@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { explainTokenFailure } from "./linear-oauth.server";
 
 // Linear's own wording ("Invalid secret") doesn't say which variable is wrong,
-// and these messages are what someone setting calgrok up actually reads.
+// and these messages are what someone setting Slated up actually reads.
 describe("explainTokenFailure", () => {
 	test("a rejected secret names the variable and warns about rotation", () => {
 		const message = explainTokenFailure(400, '{"error":"invalid_secret"}');
