@@ -50,7 +50,7 @@ export const MonthSection = forwardRef<
 		[range, teamIds, labelIds],
 	);
 
-	const { data: issues = [], isLoading, isError } = useCalendarIssues(params, enabled);
+	const { data: issues = [], isLoading, isError, refetch } = useCalendarIssues(params, enabled);
 
 	// View toggles applied client-side (instant, no refetch).
 	const visibleIssues = useMemo(
@@ -68,12 +68,15 @@ export const MonthSection = forwardRef<
 
 	return (
 		<section ref={ref} className="scroll-mt-9">
+			{/* There's no session to re-establish — the server holds the API key — so
+			    a failed month is either a transient error or a bad key. Offer the
+			    retry; a bad key is reported on the page the server renders. */}
 			{isError ? (
 				<p className="py-1 pl-[4.5rem] text-xs text-strong">
 					Couldn&apos;t load —{" "}
-					<a href="/auth/linear" className="underline">
-						reconnect Linear
-					</a>
+					<button type="button" onClick={() => refetch()} className="underline">
+						retry
+					</button>
 				</p>
 			) : null}
 

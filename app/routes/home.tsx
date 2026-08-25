@@ -1,9 +1,7 @@
 import { Button } from "@ngrok/mantle/button";
 import { data } from "react-router";
-import { Wordmark } from "~/components/wordmark";
 import { CalendarPage } from "~/features/calendar/calendar-page";
-import type { AuthMode } from "~/lib/auth-mode";
-import { getLinearAuth } from "~/lib/linear.server";
+import { linearAuthorization } from "~/lib/linear.server";
 import { fetchSession } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/home";
 
@@ -42,58 +40,25 @@ export function meta({ data: loaded }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
 	const origin = new URL(request.url).origin;
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		return data({
-			viewer: null as Viewer | null,
-			organization: null as Organization | null,
-			mode: "oauth" as AuthMode,
-			origin,
-		});
-	}
 
 	try {
-		const session = await fetchSession(auth.authorization);
-		return data(
-			{
-				viewer: session.viewer as Viewer,
-				organization: { name: session.organization.name } as Organization,
-				mode: auth.mode,
-				origin,
-			},
-			auth.headers ? { headers: auth.headers } : undefined,
-		);
+		// Viewer and organization in one request: the header needs both on every
+		// load, and this doubles as the check that Linear accepts the key.
+		const session = await fetchSession(linearAuthorization);
+		return data({
+			viewer: session.viewer as Viewer,
+			organization: { name: session.organization.name } as Organization,
+			origin,
+		});
 	} catch {
-		// A token that Linear rejects. With OAuth the fix is to sign in again; with
-		// a personal API key there is nobody to sign in, so the key itself is the
-		// problem and the screen has to say so.
+		// There is nobody to sign in, so a key Linear rejects is the only way to
+		// arrive here, and the screen has to say so.
 		return data({
 			viewer: null as Viewer | null,
 			organization: null as Organization | null,
-			mode: auth.mode,
 			origin,
 		});
 	}
-}
-
-export function ConnectScreen() {
-	return (
-		<main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-4 p-8 text-center">
-			<h1>
-				<Wordmark size="lg" />
-			</h1>
-			<p className="max-w-prose text-lg text-strong">
-				Everything your team has slated to ship, on one calendar.
-			</p>
-			<p className="max-w-prose text-sm text-muted">
-				Slated reads your Linear issues live and places them by due date. Connect your Linear
-				account to choose teams and get started.
-			</p>
-			<Button asChild appearance="filled">
-				<a href="/auth/linear">Connect Linear</a>
-			</Button>
-		</main>
-	);
 }
 
 export function InvalidApiKeyScreen() {
@@ -114,8 +79,8 @@ export function InvalidApiKeyScreen() {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-	if (loaderData.viewer) {
-		return <CalendarPage organization={loaderData.organization} authMode={loaderData.mode} />;
+	if (!loaderData.viewer) {
+		return <InvalidApiKeyScreen />;
 	}
-	return loaderData.mode === "apiKey" ? <InvalidApiKeyScreen /> : <ConnectScreen />;
+	return <CalendarPage organization={loaderData.organization} />;
 }

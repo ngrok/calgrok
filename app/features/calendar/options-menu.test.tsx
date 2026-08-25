@@ -4,7 +4,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import type { AuthMode } from "~/lib/auth-mode";
 import { OptionsMenu } from "./options-menu";
 import type { ViewOptions } from "./view-options";
 
@@ -17,8 +16,6 @@ const DEFAULT_OPTIONS: ViewOptions = {
 function renderMenu({
 	options = DEFAULT_OPTIONS,
 	onToggle = vi.fn(),
-	authMode = "oauth" as AuthMode,
-	onLogout = vi.fn(),
 	Probe = null as (() => null) | null,
 } = {}) {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -28,16 +25,9 @@ function renderMenu({
 			Component: () => (
 				<>
 					{Probe ? <Probe /> : null}
-					<OptionsMenu options={options} onToggle={onToggle} authMode={authMode} />
+					<OptionsMenu options={options} onToggle={onToggle} />
 				</>
 			),
-		},
-		{
-			path: "/auth/logout",
-			action: () => {
-				onLogout();
-				return null;
-			},
 		},
 	]);
 
@@ -48,7 +38,7 @@ function renderMenu({
 			</ThemeProvider>
 		</QueryClientProvider>,
 	);
-	return { onToggle, onLogout, queryClient };
+	return { onToggle, queryClient };
 }
 
 async function openMenu() {
@@ -83,7 +73,6 @@ describe("OptionsMenu", () => {
 			"Dark high contrast",
 		]);
 		expect(screen.getByRole("menuitem", { name: "Refresh" })).toBeInTheDocument();
-		expect(screen.getByRole("menuitem", { name: "Disconnect" })).toBeInTheDocument();
 	});
 
 	test("reflects the current view options and toggles them without closing", async () => {
@@ -153,16 +142,10 @@ describe("OptionsMenu", () => {
 		);
 	});
 
-	test("disconnect posts to the logout route", async () => {
-		const { onLogout } = renderMenu();
-		await openMenu();
-
-		await userEvent.click(screen.getByRole("menuitem", { name: "Disconnect" }));
-		await waitFor(() => expect(onLogout).toHaveBeenCalled());
-	});
-
-	test("hides disconnect when a personal API key is the auth mode", async () => {
-		renderMenu({ authMode: "apiKey" });
+	// A personal API key is server config, not a session, so there is no
+	// per-user connection for the browser to drop.
+	test("offers nothing to disconnect from", async () => {
+		renderMenu();
 		await openMenu();
 
 		expect(screen.queryByRole("menuitem", { name: "Disconnect" })).not.toBeInTheDocument();

@@ -1,6 +1,6 @@
 import type { LabelOption } from "~/features/calendar/types";
 import { env } from "~/lib/env.server";
-import { getLinearAuth } from "~/lib/linear.server";
+import { linearAuthorization } from "~/lib/linear.server";
 import { fetchLabels } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.labels";
 
@@ -9,16 +9,11 @@ import type { Route } from "./+types/api.labels";
 // (e.g. "con/web" -> "web"). The client sorts those matches first and uses them
 // as the default calendar scope. Other labels remain available as explicit
 // optional filters when they apply to the selected teams.
-export async function loader({ request }: Route.LoaderArgs) {
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		throw new Response("Unauthorized", { status: 401 });
-	}
-
+export async function loader(_: Route.LoaderArgs) {
 	const namespace = env.LINEAR_LABEL_NAMESPACE;
 	const namespaceLower = namespace.toLowerCase();
 	const groups = new Map<string, LabelOption>();
-	for (const label of await fetchLabels(auth.authorization)) {
+	for (const label of await fetchLabels(linearAuthorization)) {
 		const matchesNamespace = Boolean(
 			namespace && label.name.toLowerCase().startsWith(namespaceLower),
 		);
@@ -43,8 +38,5 @@ export async function loader({ request }: Route.LoaderArgs) {
 		(a, b) =>
 			Number(b.matchesNamespace) - Number(a.matchesNamespace) || a.name.localeCompare(b.name),
 	);
-	return Response.json(
-		{ labels, requiresLabelMatch: Boolean(namespace) },
-		auth.headers ? { headers: auth.headers } : undefined,
-	);
+	return Response.json({ labels, requiresLabelMatch: Boolean(namespace) });
 }

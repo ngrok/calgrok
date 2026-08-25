@@ -1,4 +1,4 @@
-import { getLinearAuth } from "~/lib/linear.server";
+import { linearAuthorization } from "~/lib/linear.server";
 import {
 	fetchCalendarIssues,
 	updateIssueDueDate,
@@ -7,15 +7,10 @@ import {
 } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.issues";
 
-// BFF resource route: the browser fetches issues from here (same-origin, cookie
-// auto-attached); the server reads the token from the session and talks to
-// Linear. The token never reaches the browser.
+// BFF resource route: the browser fetches issues from here (same-origin) and the
+// server talks to Linear with the configured API key. The key never reaches the
+// browser.
 export async function loader({ request }: Route.LoaderArgs) {
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		throw new Response("Unauthorized", { status: 401 });
-	}
-
 	const url = new URL(request.url);
 	const start = url.searchParams.get("start");
 	const end = url.searchParams.get("end");
@@ -33,24 +28,18 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const labelIds = labelIdsParam ? labelIdsParam.split(",").filter(Boolean) : [];
 
 	const issues = await fetchCalendarIssues({
-		authorization: auth.authorization,
+		authorization: linearAuthorization,
 		teamIds,
 		labelIds,
 		start,
 		end,
 	});
 
-	// auth.headers carries a refreshed Set-Cookie when the token was rotated.
-	return Response.json({ issues }, auth.headers ? { headers: auth.headers } : undefined);
+	return Response.json({ issues });
 }
 
 // Update an issue: POST { issueId, dueDate? , labelIds? } -> Linear issueUpdate.
 export async function action({ request }: Route.ActionArgs) {
-	const auth = await getLinearAuth(request);
-	if (!auth) {
-		throw new Response("Unauthorized", { status: 401 });
-	}
-
 	const body = (await request.json()) as {
 		issueId?: string;
 		dueDate?: string | null;
@@ -71,25 +60,25 @@ export async function action({ request }: Route.ActionArgs) {
 
 	if (hasDueDate) {
 		await updateIssueDueDate({
-			authorization: auth.authorization,
+			authorization: linearAuthorization,
 			issueId: body.issueId,
 			dueDate: body.dueDate ?? null,
 		});
 	}
 	if (hasLabels) {
 		await updateIssueLabels({
-			authorization: auth.authorization,
+			authorization: linearAuthorization,
 			issueId: body.issueId,
 			labelIds: body.labelIds as string[],
 		});
 	}
 	if (hasState) {
 		await updateIssueState({
-			authorization: auth.authorization,
+			authorization: linearAuthorization,
 			issueId: body.issueId,
 			stateId: body.stateId as string,
 		});
 	}
 
-	return Response.json({ ok: true }, auth.headers ? { headers: auth.headers } : undefined);
+	return Response.json({ ok: true });
 }

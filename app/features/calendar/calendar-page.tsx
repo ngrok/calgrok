@@ -2,7 +2,6 @@ import { Button } from "@ngrok/mantle/button";
 import { Plus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wordmark } from "~/components/wordmark";
-import type { AuthMode } from "~/lib/auth-mode";
 import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
@@ -11,13 +10,7 @@ import { OptionsMenu } from "./options-menu";
 import { useLabels, useTeams } from "./queries";
 import { useViewOptions } from "./view-options";
 
-export function CalendarPage({
-	organization,
-	authMode,
-}: {
-	organization: { name: string } | null;
-	authMode: AuthMode;
-}) {
+export function CalendarPage({ organization }: { organization: { name: string } | null }) {
 	const teamsQuery = useTeams();
 	const teams = teamsQuery.data?.teams ?? [];
 	const defaultTeamIds = teamsQuery.data?.defaultTeamIds ?? [];
@@ -116,7 +109,7 @@ export function CalendarPage({
 				{/* Everything that acts on the calendar lives in one cluster on the
 				    right, ordered by how far it reaches: filters narrow which issues
 				    load, Today moves the current view, then the write action. Options
-				    holds the rest: view toggles, theme, refresh, and the session. */}
+				    holds the rest: view toggles, theme, and refresh. */}
 				<div className="ml-auto flex flex-wrap items-center gap-2">
 					<FilterBar
 						teams={teams}
@@ -146,7 +139,7 @@ export function CalendarPage({
 					>
 						New issue
 					</Button>
-					<OptionsMenu options={options} onToggle={toggle} authMode={authMode} />
+					<OptionsMenu options={options} onToggle={toggle} />
 				</div>
 			</header>
 

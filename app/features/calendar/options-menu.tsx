@@ -1,10 +1,8 @@
 import { Button } from "@ngrok/mantle/button";
 import { DropdownMenu } from "@ngrok/mantle/dropdown-menu";
-import { ArrowsClockwise, SignOut, SlidersHorizontal } from "@phosphor-icons/react";
+import { ArrowsClockwise, SlidersHorizontal } from "@phosphor-icons/react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { useSubmit } from "react-router";
 import { ThemeMenuRadioGroup } from "~/components/theme-menu";
-import type { AuthMode } from "~/lib/auth-mode";
 import type { ViewOptions } from "./view-options";
 
 const OPTION_LABELS: { key: keyof ViewOptions; label: string }[] = [
@@ -15,20 +13,17 @@ const OPTION_LABELS: { key: keyof ViewOptions; label: string }[] = [
 
 /**
  * Everything in the header that isn't a per-visit action: the view toggles, the
- * theme, a manual sync, and signing out. Keeping them in one menu leaves the
- * header to "New issue" and "Today".
+ * theme, and a manual sync. Keeping them in one menu leaves the header to
+ * "New issue" and "Today".
  */
 export function OptionsMenu({
 	options,
 	onToggle,
-	authMode,
 }: {
 	options: ViewOptions;
 	onToggle: (key: keyof ViewOptions) => void;
-	authMode: AuthMode;
 }) {
 	const queryClient = useQueryClient();
-	const submit = useSubmit();
 	const isFetching = useIsFetching({ queryKey: ["calendar", "issues"] }) > 0;
 
 	return (
@@ -70,17 +65,6 @@ export function OptionsMenu({
 					<ArrowsClockwise className={isFetching ? "animate-spin" : undefined} />
 					{isFetching ? "Refreshing…" : "Refresh"}
 				</DropdownMenu.Item>
-				{/* A personal API key is server config, not a session — there is no
-				    per-user connection for the browser to drop. */}
-				{authMode === "oauth" ? (
-					<DropdownMenu.Item
-						className="gap-2"
-						onSelect={() => submit(null, { method: "post", action: "/auth/logout" })}
-					>
-						<SignOut />
-						Disconnect
-					</DropdownMenu.Item>
-				) : null}
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	);

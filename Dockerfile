@@ -26,9 +26,8 @@ RUN pnpm install --frozen-lockfile --prod
 # Minimal runtime image.
 FROM base AS runtime
 ENV NODE_ENV=production
-# react-router-serve listens on $PORT (default 3000). Secrets
-# (LINEAR_CLIENT_ID/SECRET, LINEAR_REDIRECT_URI, SESSION_SECRET) are provided at
-# runtime via the environment, not baked into the image.
+# react-router-serve listens on $PORT (default 3000). LINEAR_API_KEY is provided
+# at runtime via the environment, not baked into the image.
 ENV PORT=3000
 EXPOSE 3000
 COPY --from=prod-deps /app/node_modules ./node_modules
