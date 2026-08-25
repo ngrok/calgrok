@@ -56,14 +56,32 @@ describe("useCalendarFilters", () => {
 	});
 
 	test("restores selected teams from localStorage and drops unknown ids", () => {
-		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify(["content", "old-team"]));
+		localStorage.setItem("slated:team-ids:v1", JSON.stringify(["content", "old-team"]));
 		const { result } = renderHook(() => useCalendarFilters(teams, ["gtm"]));
 
 		expect(result.current.teamIds).toEqual(["content"]);
 	});
 
+	test("reads a selection saved under the old calgrok key", () => {
+		// The app shipped as "calgrok" before the rename. Anyone who used it then
+		// has their teams under the old key, and losing it would silently reset
+		// their calendar to an empty selection.
+		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify(["content"]));
+		const { result } = renderHook(() => useCalendarFilters(teams, ["gtm"]));
+
+		expect(result.current.teamIds).toEqual(["content"]);
+	});
+
+	test("the current key wins over the old calgrok key", () => {
+		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify(["gtm"]));
+		localStorage.setItem("slated:team-ids:v1", JSON.stringify(["content"]));
+		const { result } = renderHook(() => useCalendarFilters(teams, []));
+
+		expect(result.current.teamIds).toEqual(["content"]);
+	});
+
 	test("a stored empty selection wins over the configured default", () => {
-		localStorage.setItem("calgrok:team-ids:v1", JSON.stringify([]));
+		localStorage.setItem("slated:team-ids:v1", JSON.stringify([]));
 		const { result } = renderHook(() => useCalendarFilters(teams, ["gtm"]));
 
 		expect(result.current.teamIds).toEqual([]);
@@ -73,14 +91,14 @@ describe("useCalendarFilters", () => {
 		renderHook(() => useCalendarFilters(teams, []));
 
 		// Storing [] here would outrank LINEAR_TEAM_DEFAULT on every later visit.
-		expect(localStorage.getItem("calgrok:team-ids:v1")).toBeNull();
+		expect(localStorage.getItem("slated:team-ids:v1")).toBeNull();
 	});
 
 	test("the seeded default is not written to storage", () => {
 		const { result } = renderHook(() => useCalendarFilters(teams, ["content"]));
 
 		expect(result.current.teamIds).toEqual(["content"]);
-		expect(localStorage.getItem("calgrok:team-ids:v1")).toBeNull();
+		expect(localStorage.getItem("slated:team-ids:v1")).toBeNull();
 	});
 
 	test("clearing the last team by hand is remembered", () => {
@@ -89,7 +107,7 @@ describe("useCalendarFilters", () => {
 		act(() => result.current.toggleTeam("content"));
 
 		expect(result.current.teamIds).toEqual([]);
-		expect(localStorage.getItem("calgrok:team-ids:v1")).toBe("[]");
+		expect(localStorage.getItem("slated:team-ids:v1")).toBe("[]");
 	});
 
 	test("toggleLabelGroup adds and removes all ids of a name together", () => {

@@ -4,7 +4,7 @@
 import "dotenv/config";
 
 /**
- * calgrok reaches Linear with a personal API key, and only that.
+ * Slated reaches Linear with a personal API key, and only that.
  *
  * There is no sign-in: every visitor acts as the key's owner. Run it on
  * localhost, or put your own access control in front of it.
@@ -21,7 +21,7 @@ const apiKey = read("LINEAR_API_KEY");
 if (!apiKey) {
 	throw new Error(
 		[
-			"calgrok cannot start. LINEAR_API_KEY is not set.",
+			"Slated cannot start. LINEAR_API_KEY is not set.",
 			"",
 			"  1. Create a personal API key at https://linear.app/settings/api",
 			"  2. Put it in .env as LINEAR_API_KEY=lin_api_...",

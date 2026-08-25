@@ -1,14 +1,16 @@
 import { Button } from "@ngrok/mantle/button";
 import { Plus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Wordmark } from "~/components/wordmark";
 import { toISODate } from "./date-utils";
 import { FilterBar, useCalendarFilters } from "./filters";
 import { MonthList, type MonthListHandle } from "./month-list";
 import { NewIssueDialog } from "./new-issue-dialog";
+import { OptionsMenu } from "./options-menu";
 import { useLabels, useTeams } from "./queries";
-import { RefreshButton, useViewOptions, ViewOptionsMenu } from "./view-options";
+import { useViewOptions } from "./view-options";
 
-export function CalendarPage({ viewer }: { viewer: { name: string; email: string } }) {
+export function CalendarPage({ organization }: { organization: { name: string } | null }) {
 	const teamsQuery = useTeams();
 	const teams = teamsQuery.data?.teams ?? [];
 	const defaultTeamIds = teamsQuery.data?.defaultTeamIds ?? [];
@@ -93,22 +95,42 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 
 	return (
 		<div className="flex h-dvh flex-col">
-			<header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-card p-4 sm:p-6">
-				<div>
-					<h1 className="text-xl font-medium text-strong">calgrok</h1>
-					<p className="text-xs text-muted">{viewer.name}</p>
+			<header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-card p-4 sm:px-6 sm:py-4">
+				<div className="flex items-center gap-2">
+					<h1>
+						<Wordmark />
+					</h1>
+					{organization ? (
+						<span className="truncate text-xl tracking-tight text-muted">
+							@ {organization.name}
+						</span>
+					) : null}
 				</div>
-				<FilterBar
-					teams={teams}
-					teamsLoading={teamsQuery.isLoading}
-					teamIds={filters.teamIds}
-					labelIds={filters.labelIds}
-					labels={visibleLabels}
-					onToggleTeam={filters.toggleTeam}
-					onToggleLabelGroup={filters.toggleLabelGroup}
-					onClearLabels={filters.clearLabels}
-				/>
-				<div className="ml-auto flex items-center gap-2">
+				{/* Everything that acts on the calendar lives in one cluster on the
+				    right, ordered by how far it reaches: filters narrow which issues
+				    load, Today moves the current view, then the write action. Options
+				    holds the rest: view toggles, theme, and refresh. */}
+				<div className="ml-auto flex flex-wrap items-center gap-2">
+					<FilterBar
+						teams={teams}
+						teamsLoading={teamsQuery.isLoading}
+						teamIds={filters.teamIds}
+						labelIds={filters.labelIds}
+						labels={visibleLabels}
+						onToggleTeam={filters.toggleTeam}
+						onToggleLabelGroup={filters.toggleLabelGroup}
+						onClearLabels={filters.clearLabels}
+					/>
+					<Button
+						type="button"
+						appearance="outlined"
+						onClick={() => listRef.current?.scrollToToday()}
+					>
+						Today
+					</Button>
+					{/* Keeps the write action apart from the controls that only change
+					    what is already on screen. */}
+					<span aria-hidden="true" className="mx-1 h-6 border-l border-card" />
 					<Button
 						type="button"
 						appearance="filled"
@@ -117,15 +139,7 @@ export function CalendarPage({ viewer }: { viewer: { name: string; email: string
 					>
 						New issue
 					</Button>
-					<Button
-						type="button"
-						appearance="outlined"
-						onClick={() => listRef.current?.scrollToToday()}
-					>
-						Today
-					</Button>
-					<ViewOptionsMenu options={options} onToggle={toggle} />
-					<RefreshButton />
+					<OptionsMenu options={options} onToggle={toggle} />
 				</div>
 			</header>
 

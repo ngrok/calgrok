@@ -1,3 +1,14 @@
+import darkCssUrl from "@ngrok/mantle/mantle-dark.css?url";
+import darkHighContrastCssUrl from "@ngrok/mantle/mantle-dark-high-contrast.css?url";
+import lightHighContrastCssUrl from "@ngrok/mantle/mantle-light-high-contrast.css?url";
+import {
+	extractThemeCookie,
+	MantleStyleSheets,
+	mantleStyleSheetUrls,
+	PreventWrongThemeFlashScript,
+	ThemeProvider,
+	useInitialHtmlThemeProps,
+} from "@ngrok/mantle/theme";
 import { Toaster } from "@ngrok/mantle/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
@@ -9,23 +20,64 @@ import {
 	Outlet,
 	Scripts,
 	ScrollRestoration,
+	useRouteLoaderData,
 } from "react-router";
+import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
+export const links: LinksFunction = () => [
+	{ rel: "stylesheet", href: stylesheet },
+	// SVG first for browsers that take it; .ico is the fallback for those that
+	// don't, and is what Windows and older Safari pick up.
+	{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+	{ rel: "icon", href: "/favicon.ico", sizes: "48x48 32x32 16x16" },
+	{ rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+];
+
+/*
+ * app.css only carries the light theme. Mantle ships the other three as
+ * separate files that load behind a media query, so a light-mode visitor never
+ * downloads them.
+ */
+const themeUrls = mantleStyleSheetUrls({
+	darkCssUrl,
+	lightHighContrastCssUrl,
+	darkHighContrastCssUrl,
+});
+
+export function loader({ request }: Route.LoaderArgs) {
+	// Mantle keeps the chosen theme in a cookie so the server can render the
+	// right one on the first paint. Send only that cookie to the browser — the
+	// full header also carries the Linear session.
+	return { themeCookie: extractThemeCookie(request.headers.get("Cookie")) };
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
+	// Layout also wraps the ErrorBoundary, which renders when the root loader
+	// never ran, so treat the data as optional.
+	const rootData = useRouteLoaderData<typeof loader>("root");
+	const htmlThemeProps = useInitialHtmlThemeProps({ ssrCookie: rootData?.themeCookie });
+
 	return (
-		<html lang="en">
+		<html {...htmlThemeProps} lang="en" suppressHydrationWarning>
 			<head>
+				{/* Applies the stored theme before the first paint. Without it a
+				    dark-mode visitor sees a flash of the light theme. */}
+				<PreventWrongThemeFlashScript />
+				<MantleStyleSheets {...themeUrls} ssrCookie={rootData?.themeCookie} />
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				{/* The brand blue, for the browser chrome on Android and on macOS
+				    Safari's tab bar. */}
+				<meta name="theme-color" content="#0078C4" />
 				<Meta />
 				<Links />
 			</head>
 			<body className="bg-body text-strong">
-				{children}
-				<Toaster />
+				<ThemeProvider>
+					{children}
+					<Toaster />
+				</ThemeProvider>
 				<ScrollRestoration />
 				<Scripts />
 			</body>

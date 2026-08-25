@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Writes a .env for calgrok.
+ * Writes a .env for Slated.
  *
- * calgrok needs one value: a personal Linear API key. There is no sign-in, so
- * calgrok acts as the key's owner and everyone who reaches the server gets that
+ * Slated needs one value: a personal Linear API key. There is no sign-in, so
+ * Slated acts as the key's owner and everyone who reaches the server gets that
  * access. Run it locally, or put your own access control in front of it.
  *
  * Run it with `pnpm setup:env` (not `pnpm setup`, which is pnpm's own command).
@@ -16,7 +16,7 @@ const ENV_PATH = new URL("../.env", import.meta.url);
 const API_KEYS_URL = "https://linear.app/settings/api";
 
 function template(apiKey) {
-	return `# calgrok. You act as the owner of this API key: there is no sign-in, so anyone
+	return `# Slated. You act as the owner of this API key: there is no sign-in, so anyone
 # who can reach this server can act as you. Keep it local, or put your own access
 # control in front of it (see "Deploying" in the README).
 LINEAR_API_KEY=${apiKey}
@@ -73,9 +73,9 @@ Next: put a personal API key on the LINEAR_API_KEY line.
 
 	const rl = createInterface({ input: stdin, output: stdout });
 	try {
-		console.log(`calgrok setup
+		console.log(`Slated setup
 
-calgrok needs one personal Linear API key. Create one at
+Slated needs one personal Linear API key. Create one at
 ${API_KEYS_URL}
 `);
 		const apiKey = (await rl.question("Paste it here: ")).trim();

@@ -1,4 +1,4 @@
-# calgrok — Linear Content Calendar
+# Slated: design notes
 
 A fast, month-view content calendar backed live by the Linear API. No data is
 stored from Linear; everything is pulled on demand and cached in-session. The
@@ -13,7 +13,7 @@ core of the design — not a polish step.
 > One decision has since been reversed: auth is a single personal API key, not
 > multi-user OAuth. Everything below about OAuth apps, token exchange, and the
 > session cookie describes code that no longer exists. See the README for how
-> calgrok authenticates now.
+> Slated authenticates now.
 
 ## Product decisions (locked)
 
