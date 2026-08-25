@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Slated">
+  <title>Slated</title>
+  <defs>
+    <clipPath id="tile">
+      <rect x="4" y="3" width="24" height="26" rx="5.5"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect x="4" y="3" width="24" height="26" fill="#0078C4"/>
+    <rect x="4" y="3" width="24" height="5" fill="#024A70"/>
+  </g>
+  <g fill="#FFFFFF">
+    <rect x="8" y="11.5" width="6.5" height="5.5" rx="1.5" opacity=".5"/>
+    <rect x="17.5" y="11.5" width="6.5" height="5.5" rx="1.5" opacity=".5"/>
+    <rect x="8" y="20" width="6.5" height="5.5" rx="1.5" opacity=".5"/>
+    <rect x="17.5" y="20" width="6.5" height="5.5" rx="1.5"/>
+  </g>
+</svg>
