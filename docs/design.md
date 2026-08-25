@@ -1,4 +1,4 @@
-# calgrok — Linear Content Calendar
+# Slated: design notes
 
 A fast, month-view content calendar backed live by the Linear API. No data is
 stored from Linear; everything is pulled on demand and cached in-session. The
