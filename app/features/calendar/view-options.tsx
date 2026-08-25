@@ -4,6 +4,7 @@ import { Popover } from "@ngrok/mantle/popover";
 import { ArrowsClockwise, SlidersHorizontal } from "@phosphor-icons/react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { readStored } from "~/lib/storage";
 
 export type ViewOptions = {
 	showWeekends: boolean;
@@ -17,7 +18,7 @@ const DEFAULTS: ViewOptions = {
 	showSubtasks: true,
 };
 
-const STORAGE_KEY = "calgrok:view-options:v1";
+const STORAGE_KEY = "slated:view-options:v1";
 
 /** View toggles, persisted to localStorage (SSR-safe: defaults first, then load). */
 export function useViewOptions() {
@@ -26,7 +27,7 @@ export function useViewOptions() {
 
 	useEffect(() => {
 		try {
-			const raw = localStorage.getItem(STORAGE_KEY);
+			const raw = readStored(STORAGE_KEY);
 			if (raw) {
 				setOptions({ ...DEFAULTS, ...(JSON.parse(raw) as Partial<ViewOptions>) });
 			}

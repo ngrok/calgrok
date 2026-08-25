@@ -1,5 +1,5 @@
 /**
- * How calgrok reaches Linear.
+ * How Slated reaches Linear.
  *
  * - `apiKey` — a personal API key from `LINEAR_API_KEY`. Single-user: every
  *   visitor acts as the key's owner.

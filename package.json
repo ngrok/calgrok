@@ -1,6 +1,15 @@
 {
-	"name": "calgrok",
+	"name": "slated",
+	"version": "0.1.0",
 	"private": true,
+	"description": "A content calendar that runs live on top of Linear.",
+	"license": "MIT",
+	"homepage": "https://github.com/ngrok/slated",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ngrok/slated.git"
+	},
+	"bugs": "https://github.com/ngrok/slated/issues",
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {

@@ -12,7 +12,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 	// establish. Nothing links here in that mode; this covers a stale bookmark.
 	if (env.AUTH_MODE === "apiKey") {
 		throw new Response(
-			"This calgrok runs on a personal API key, so there is nothing to sign in to. Unset LINEAR_API_KEY and configure a Linear OAuth app to let people sign in with their own accounts.",
+			"This server runs on a personal API key, so there is nothing to sign in to. Unset LINEAR_API_KEY and configure a Linear OAuth app to let people sign in with their own accounts.",
 			{ status: 404 },
 		);
 	}

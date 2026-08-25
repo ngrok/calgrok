@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Writes a .env for calgrok.
+ * Writes a .env for Slated.
  *
  * There are two ways to reach Linear, and this picks one for you:
  *
@@ -26,7 +26,7 @@ const CALLBACK_URL = "http://localhost:3000/auth/linear/callback";
 const sessionSecret = () => randomBytes(32).toString("hex");
 
 function soloEnv(apiKey) {
-	return `# calgrok — solo setup. You act as the owner of this API key.
+	return `# Slated, solo setup. You act as the owner of this API key.
 # Anyone who can reach this server can act as you, so keep it local or put your
 # own access control in front of it. To let other people sign in as themselves,
 # delete this file and run \`pnpm setup:env\` again, choosing the team setup.
@@ -43,7 +43,7 @@ LINEAR_LABEL_NAMESPACE=
 }
 
 function teamEnv({ clientId, clientSecret, redirectUri }) {
-	return `# calgrok — team setup. Each person signs in with their own Linear account.
+	return `# Slated, team setup. Each person signs in with their own Linear account.
 LINEAR_CLIENT_ID=${clientId}
 LINEAR_CLIENT_SECRET=${clientSecret}
 LINEAR_REDIRECT_URI=${redirectUri}
@@ -108,11 +108,11 @@ Next: put a personal API key on the LINEAR_API_KEY line.
 
 	const rl = createInterface({ input: stdin, output: stdout });
 	try {
-		console.log(`calgrok setup
+		console.log(`Slated setup
 
-  1) Solo — just me, on this machine. One API key, no OAuth app.
+  1) Solo: just me, on this machine. One API key, no OAuth app.
        Needs a workspace that lets members create personal API keys.
-  2) Team — several people, each signing in with their own Linear account.
+  2) Team: several people, each signing in with their own Linear account.
        Works everywhere. Any member can create an OAuth app.
 `);
 		const choice = (await rl.question("Pick 1 or 2 [1]: ")).trim() || "1";
