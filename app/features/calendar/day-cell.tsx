@@ -5,9 +5,12 @@ import { format } from "date-fns";
 import { forwardRef, memo, useState } from "react";
 import { toISODate } from "./date-utils";
 import { DraggableIssueCard } from "./draggable-issue-card";
-import type { CalendarIssue } from "./types";
+import { DraggableProjectCard } from "./draggable-project-card";
+import type { CalendarIssue, CalendarProject } from "./types";
 
 // Cap visible cards per day so a busy day doesn't blow up the row height.
+// Projects and issues share the budget, so the cap holds however the day is
+// made up.
 const MAX_VISIBLE = 4;
 
 export const DayCell = memo(
@@ -16,12 +19,16 @@ export const DayCell = memo(
 		{
 			date: Date;
 			issues: CalendarIssue[];
+			projects: CalendarProject[];
 			isCurrentMonth: boolean;
 			isToday: boolean;
 			onOpenIssue: (issue: CalendarIssue) => void;
 			onNewIssue: (dueDate: string) => void;
 		}
-	>(function DayCell({ date, issues, isCurrentMonth, isToday, onOpenIssue, onNewIssue }, ref) {
+	>(function DayCell(
+		{ date, issues, projects, isCurrentMonth, isToday, onOpenIssue, onNewIssue },
+		ref,
+	) {
 		// Each day is a drop target keyed by its ISO date (the new dueDate).
 		const { setNodeRef, isOver } = useDroppable({ id: toISODate(date) });
 		const [expanded, setExpanded] = useState(false);
@@ -34,8 +41,13 @@ export const DayCell = memo(
 			}
 		}
 
-		const hidden = issues.length - MAX_VISIBLE;
-		const visible = expanded ? issues : issues.slice(0, MAX_VISIBLE);
+		const hidden = projects.length + issues.length - MAX_VISIBLE;
+		// Projects come first: the bigger unit reads as the day's headline, and it
+		// keeps its place when the cap trims the issues under it.
+		const visibleProjects = expanded ? projects : projects.slice(0, MAX_VISIBLE);
+		const visibleIssues = expanded
+			? issues
+			: issues.slice(0, Math.max(0, MAX_VISIBLE - projects.length));
 
 		return (
 			<div
@@ -71,7 +83,10 @@ export const DayCell = memo(
 				</div>
 
 				<div className="flex flex-col gap-1.5">
-					{visible.map((issue) => (
+					{visibleProjects.map((project) => (
+						<DraggableProjectCard key={project.id} project={project} />
+					))}
+					{visibleIssues.map((issue) => (
 						<DraggableIssueCard key={issue.id} issue={issue} onOpen={onOpenIssue} />
 					))}
 					{!expanded && hidden > 0 ? (

@@ -1,14 +1,21 @@
 import { cx } from "@ngrok/mantle/cx";
 import { format, getDate, getMonth, isSameDay, isSameMonth } from "date-fns";
 import { forwardRef, useMemo } from "react";
-import { groupIssuesByDueDate, monthGridRange, monthOwnedWeeks, toISODate } from "./date-utils";
+import {
+	groupIssuesByDueDate,
+	groupProjectsByTargetDate,
+	monthGridRange,
+	monthOwnedWeeks,
+	toISODate,
+} from "./date-utils";
 import { DayCell } from "./day-cell";
-import { useCalendarIssues } from "./queries";
-import type { CalendarIssue } from "./types";
+import { useCalendarIssues, useCalendarProjects } from "./queries";
+import type { CalendarIssue, CalendarProject } from "./types";
 import type { ViewOptions } from "./view-options";
 
-// Stable empty array so memoized DayCells for empty days don't re-render.
+// Stable empty arrays so memoized DayCells for empty days don't re-render.
 const NO_ISSUES: CalendarIssue[] = [];
+const NO_PROJECTS: CalendarProject[] = [];
 
 /**
  * One month in the endless scroll, rendered as the weeks it owns (see
@@ -52,6 +59,19 @@ export const MonthSection = forwardRef<
 
 	const { data: issues = [], isLoading, isError, refetch } = useCalendarIssues(params, enabled);
 
+	// Projects carry no label filter (see ProjectsQueryParams), so they get their
+	// own query key and their own request. Turning "Show projects" off disables
+	// it, so a calendar without projects costs nothing to load.
+	const projectParams = useMemo(
+		() => ({ start: params.start, end: params.end, teamIds }),
+		[params.start, params.end, teamIds],
+	);
+	const {
+		data: projects = [],
+		isError: isProjectsError,
+		refetch: refetchProjects,
+	} = useCalendarProjects(projectParams, enabled && options.showProjects);
+
 	// View toggles applied client-side (instant, no refetch).
 	const visibleIssues = useMemo(
 		() =>
@@ -62,7 +82,18 @@ export const MonthSection = forwardRef<
 			),
 		[issues, options.showCompleted, options.showSubtasks],
 	);
+	const visibleProjects = useMemo(
+		() =>
+			options.showProjects
+				? projects.filter((project) => options.showCompleted || project.status.type !== "completed")
+				: NO_PROJECTS,
+		[projects, options.showCompleted, options.showProjects],
+	);
 	const byDate = useMemo(() => groupIssuesByDueDate(visibleIssues), [visibleIssues]);
+	const projectsByDate = useMemo(
+		() => groupProjectsByTargetDate(visibleProjects),
+		[visibleProjects],
+	);
 
 	const weeks = useMemo(() => monthOwnedWeeks(month), [month]);
 
@@ -71,10 +102,22 @@ export const MonthSection = forwardRef<
 			{/* There's no session to re-establish — the server holds the API key — so
 			    a failed month is either a transient error or a bad key. Offer the
 			    retry; a bad key is reported on the page the server renders. */}
-			{isError ? (
+			{isError || isProjectsError ? (
 				<p className="py-1 pl-[4.5rem] text-xs text-strong">
-					Couldn&apos;t load —{" "}
-					<button type="button" onClick={() => refetch()} className="underline">
+					Couldn&apos;t load{" "}
+					{isError && isProjectsError ? "this month" : isError ? "issues" : "projects"} —{" "}
+					<button
+						type="button"
+						onClick={() => {
+							if (isError) {
+								refetch();
+							}
+							if (isProjectsError) {
+								refetchProjects();
+							}
+						}}
+						className="underline"
+					>
 						retry
 					</button>
 				</p>
@@ -115,6 +158,7 @@ export const MonthSection = forwardRef<
 								ref={isSameDay(day, today) ? ref : undefined}
 								date={day}
 								issues={byDate.get(toISODate(day)) ?? NO_ISSUES}
+								projects={projectsByDate.get(toISODate(day)) ?? NO_PROJECTS}
 								isCurrentMonth={isSameMonth(day, month)}
 								isToday={isSameDay(day, today)}
 								onOpenIssue={onOpenIssue}

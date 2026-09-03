@@ -2,10 +2,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { calendarKeys, useClearDueDate, useUpdateDueDate, useUpdateLabels } from "./queries";
-import type { CalendarIssue } from "./types";
+import {
+	calendarKeys,
+	useClearDueDate,
+	useUpdateDueDate,
+	useUpdateLabels,
+	useUpdateTargetDate,
+} from "./queries";
+import type { CalendarIssue, CalendarProject } from "./types";
 
 const params = { start: "2026-06-01", end: "2026-07-06", teamIds: ["t1"], labelIds: [] };
+const projectParams = { start: "2026-06-01", end: "2026-07-06", teamIds: ["t1"] };
 
 const issue: CalendarIssue = {
 	id: "issue-1",
@@ -21,6 +28,20 @@ const issue: CalendarIssue = {
 	project: null,
 	team: { id: "t1", key: "GTM", name: "GTM" },
 	parent: null,
+};
+
+const project: CalendarProject = {
+	id: "project-1",
+	name: "Q3 Content push",
+	url: "https://linear.app/x/project/q3",
+	targetDate: "2026-06-30",
+	targetDateResolution: "quarter",
+	color: "#5e6ad2",
+	progress: 0.5,
+	status: { id: "ps", name: "In Progress", color: "#f2c94c", type: "started" },
+	lead: null,
+	labels: [],
+	teams: [{ id: "t1", key: "GTM", name: "GTM" }],
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -123,5 +144,64 @@ describe("useClearDueDate", () => {
 
 		const cached = queryClient.getQueryData<CalendarIssue[]>(calendarKeys.issues(params));
 		expect(cached).toEqual([]);
+	});
+});
+
+describe("useUpdateTargetDate", () => {
+	test("optimistically moves the project and POSTs the change", async () => {
+		const fetchMock = vi.fn(
+			async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(calendarKeys.projects(projectParams), [project]);
+
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+		);
+		const { result } = renderHook(() => useUpdateTargetDate(), { wrapper });
+
+		await act(async () => {
+			await result.current.mutateAsync({ projectId: "project-1", targetDate: "2026-06-12" });
+		});
+
+		const cached = queryClient.getQueryData<CalendarProject[]>(
+			calendarKeys.projects(projectParams),
+		);
+		expect(cached?.[0]?.targetDate).toBe("2026-06-12");
+		// The drop landed on one day, so the target is no longer a period.
+		expect(cached?.[0]?.targetDateResolution).toBeNull();
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/projects",
+			expect.objectContaining({ method: "POST" }),
+		);
+	});
+
+	test("rolls back the optimistic move if the request fails", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response("nope", { status: 500 })),
+		);
+
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(calendarKeys.projects(projectParams), [project]);
+
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+		);
+		const { result } = renderHook(() => useUpdateTargetDate(), { wrapper });
+
+		await act(async () => {
+			await result.current
+				.mutateAsync({ projectId: "project-1", targetDate: "2026-06-12" })
+				.catch(() => {});
+		});
+
+		const cached = queryClient.getQueryData<CalendarProject[]>(
+			calendarKeys.projects(projectParams),
+		);
+		expect(cached?.[0]?.targetDate).toBe("2026-06-30");
+		expect(cached?.[0]?.targetDateResolution).toBe("quarter");
 	});
 });

@@ -1,15 +1,9 @@
 import { ArrowSquareOut, FolderOpen } from "@phosphor-icons/react";
 import { memo } from "react";
+import { PersonAvatar } from "./person-avatar";
 import { PriorityIcon } from "./priority-icon";
 import { StatusIcon } from "./status-icon";
 import type { CalendarIssue } from "./types";
-
-function initialsOf(name: string): string {
-	const parts = name.trim().split(/\s+/);
-	const first = parts[0]?.[0] ?? "?";
-	const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-	return (first + last).toUpperCase();
-}
 
 const MAX_LABEL_DOTS = 3;
 
@@ -76,23 +70,7 @@ export const IssueCard = memo(function IssueCard({ issue }: { issue: CalendarIss
 						) : null}
 					</div>
 
-					{issue.assignee ? (
-						issue.assignee.avatarUrl ? (
-							<img
-								src={issue.assignee.avatarUrl}
-								alt={issue.assignee.name}
-								title={issue.assignee.name}
-								className="size-4 shrink-0 rounded-full"
-							/>
-						) : (
-							<span
-								title={issue.assignee.name}
-								className="flex size-4 shrink-0 items-center justify-center rounded-full bg-filled-accent text-[8px] font-medium text-on-filled"
-							>
-								{initialsOf(issue.assignee.displayName || issue.assignee.name)}
-							</span>
-						)
-					) : null}
+					{issue.assignee ? <PersonAvatar person={issue.assignee} /> : null}
 				</div>
 			</div>
 		</div>

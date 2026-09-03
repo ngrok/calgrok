@@ -1,4 +1,4 @@
-import type { CalendarIssue, WorkflowState } from "~/features/calendar/types";
+import type { CalendarIssue, CalendarProject, WorkflowState } from "~/features/calendar/types";
 
 export type RawLabel = { id: string; name: string; color: string; teamId: string | null };
 export type RawTeam = { id: string; key: string; name: string };
@@ -137,6 +137,151 @@ export async function fetchCalendarIssues(params: {
 	}
 
 	return issues;
+}
+
+/**
+ * Page sizes for the project query, set by Linear's rate limits rather than by
+ * what we would otherwise pick. Nothing here costs money: "complexity" is a
+ * number Linear derives from the shape of a query and meters per hour, and
+ * overspending it returns errors, not an invoice.
+ *
+ * Projects are expensive in a way issues are not. Linear scores a query by the
+ * page sizes it asks for, not by the rows it returns, and a project's nested
+ * `labels` and `teams` connections multiply against the outer page. Measured
+ * against Linear (each figure is the drop in the
+ * `x-ratelimit-complexity-remaining` header):
+ *
+ *   250 projects / 50 nested   34,600   refused: the per-query cap is 10,000
+ *   100 projects / 20 nested    6,041   allowed, and 7x more than we need
+ *    25 projects / 10 nested      861   what we send
+ *   250 issues                      13   the issue query, for scale
+ *
+ * The hourly allowance is 3,000,000 complexity and 2,500 requests. At 6,041 a
+ * project request, complexity ran out first (about 496 month-fetches an hour),
+ * which the calendar can reach: it refetches every mounted month on window
+ * focus. At 861 the request count binds first, so the calendar cannot exhaust
+ * its complexity allowance before it exhausts its requests.
+ *
+ * Because the fetch below paginates, a small page spends roughly per project
+ * fetched rather than per project asked for, so a page of 25 is cheaper for
+ * every workspace and no less correct: a month holding more projects than that
+ * pages through them. Nested connections cap at 10, so a card's "+N" counts
+ * stop being exact for a project carrying more than 10 labels or teams.
+ *
+ * Raising either number raises the score of every request. Measure if you do.
+ */
+const PROJECTS_PAGE_SIZE = 25;
+const PROJECT_NESTED_PAGE_SIZE = 10;
+
+// Every field a project card renders. Projects sit on the calendar by their
+// target date, so the query mirrors the issue one: one request, nested
+// status/lead/labels/teams, no per-project follow-ups.
+const CALENDAR_PROJECTS_QUERY = `
+query CalendarProjects($filter: ProjectFilter!, $first: Int!, $after: String) {
+  projects(filter: $filter, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      id
+      name
+      url
+      targetDate
+      targetDateResolution
+      color
+      progress
+      status { id name color type }
+      lead { id name displayName avatarUrl }
+      labels(first: ${PROJECT_NESTED_PAGE_SIZE}) { nodes { id name color } }
+      teams(first: ${PROJECT_NESTED_PAGE_SIZE}) { nodes { id key name } }
+    }
+  }
+}`;
+
+type RawProject = Omit<CalendarProject, "labels" | "teams"> & {
+	labels: { nodes: CalendarProject["labels"] };
+	teams: { nodes: CalendarProject["teams"] };
+};
+
+type CalendarProjectsData = {
+	projects: {
+		pageInfo: { hasNextPage: boolean; endCursor: string | null };
+		nodes: RawProject[];
+	};
+};
+
+export async function fetchCalendarProjects(params: {
+	authorization: string;
+	teamIds: string[];
+	/** Project label names from LINEAR_PROJECT_LABEL. Empty means no label scope. */
+	labelNames?: string[];
+	start: string;
+	end: string;
+}): Promise<CalendarProject[]> {
+	// Same shape as the issue filter: the selected teams AND the visible window.
+	// `accessibleTeams` is Linear's team filter for projects, which belong to one
+	// or more teams rather than exactly one.
+	const filter: Record<string, unknown> = {
+		targetDate: { gte: params.start, lte: params.end },
+		accessibleTeams: { id: { in: params.teamIds } },
+	};
+	if (params.labelNames && params.labelNames.length > 0) {
+		// Project labels are workspace-level, so they are matched by name rather
+		// than by the per-team ids the issue filter uses. `or` covers a single
+		// configured name as well as several.
+		filter.labels = {
+			some: { or: params.labelNames.map((name) => ({ name: { eqIgnoreCase: name } })) },
+		};
+	}
+
+	const projects: CalendarProject[] = [];
+	let after: string | null = null;
+
+	// Paginate to exhaustion, with the same runaway guard as the issue query.
+	for (let page = 0; page < 20; page++) {
+		const result: CalendarProjectsData = await linearGraphQL<CalendarProjectsData>(
+			params.authorization,
+			CALENDAR_PROJECTS_QUERY,
+			{ filter, first: PROJECTS_PAGE_SIZE, after },
+		);
+		for (const node of result.projects.nodes) {
+			projects.push({ ...node, labels: node.labels.nodes, teams: node.teams.nodes });
+		}
+		if (!result.projects.pageInfo.hasNextPage) {
+			break;
+		}
+		after = result.projects.pageInfo.endCursor;
+	}
+
+	return projects;
+}
+
+const UPDATE_PROJECT_TARGET_DATE_MUTATION = `
+mutation UpdateProjectTargetDate($id: String!, $targetDate: TimelessDate) {
+  projectUpdate(id: $id, input: { targetDate: $targetDate, targetDateResolution: null }) {
+    success
+  }
+}`;
+
+/**
+ * Move a project's target date.
+ *
+ * `targetDateResolution` is cleared along with it: a project whose target was a
+ * period ("Q4") has been dropped on one day, and leaving the coarse resolution
+ * in place would let Linear round the date back off the day the user picked.
+ */
+export async function updateProjectTargetDate(params: {
+	authorization: string;
+	projectId: string;
+	/** A "YYYY-MM-DD" date, or null to clear it (removes the project from the calendar). */
+	targetDate: string | null;
+}): Promise<void> {
+	const data = await linearGraphQL<{ projectUpdate: { success: boolean } }>(
+		params.authorization,
+		UPDATE_PROJECT_TARGET_DATE_MUTATION,
+		{ id: params.projectId, targetDate: params.targetDate },
+	);
+	if (!data.projectUpdate.success) {
+		throw new Error("Linear did not accept the target date update");
+	}
 }
 
 const LABELS_QUERY = `

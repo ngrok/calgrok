@@ -1,14 +1,16 @@
 import { Button } from "@ngrok/mantle/button";
 import { DropdownMenu } from "@ngrok/mantle/dropdown-menu";
 import { ArrowsClockwise, SlidersHorizontal } from "@phosphor-icons/react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ThemeMenuRadioGroup } from "~/components/theme-menu";
+import { invalidateCalendarGrid, useCalendarFetchCount } from "./queries";
 import type { ViewOptions } from "./view-options";
 
 const OPTION_LABELS: { key: keyof ViewOptions; label: string }[] = [
 	{ key: "showWeekends", label: "Show weekends" },
 	{ key: "showCompleted", label: "Show completed" },
 	{ key: "showSubtasks", label: "Show sub-tasks" },
+	{ key: "showProjects", label: "Show projects" },
 ];
 
 /**
@@ -19,12 +21,20 @@ const OPTION_LABELS: { key: keyof ViewOptions; label: string }[] = [
 export function OptionsMenu({
 	options,
 	onToggle,
+	projectLabel = [],
 }: {
 	options: ViewOptions;
 	onToggle: (key: keyof ViewOptions) => void;
+	/**
+	 * Project label names from LINEAR_PROJECT_LABEL, shown next to the projects
+	 * toggle. A wrong label empties the calendar of projects and reports nothing,
+	 * and the server reads the variable once at startup, so a stale value
+	 * outlives an edit to .env. Naming the label here makes both visible.
+	 */
+	projectLabel?: string[];
 }) {
 	const queryClient = useQueryClient();
-	const isFetching = useIsFetching({ queryKey: ["calendar", "issues"] }) > 0;
+	const isFetching = useCalendarFetchCount() > 0;
 
 	return (
 		<DropdownMenu.Root>
@@ -44,6 +54,14 @@ export function OptionsMenu({
 						onCheckedChange={() => onToggle(key)}
 					>
 						{label}
+						{key === "showProjects" && projectLabel.length > 0 ? (
+							<span
+								className="ml-auto pl-2 text-xs text-muted"
+								title={`Only projects labelled ${projectLabel.join(" or ")} reach the calendar (LINEAR_PROJECT_LABEL).`}
+							>
+								{projectLabel.join(", ")}
+							</span>
+						) : null}
 					</DropdownMenu.CheckboxItem>
 				))}
 
@@ -59,7 +77,7 @@ export function OptionsMenu({
 						// The spinner below is the only sign a sync is running, so keep
 						// the menu open long enough to show it.
 						event.preventDefault();
-						queryClient.invalidateQueries({ queryKey: ["calendar", "issues"] });
+						invalidateCalendarGrid(queryClient);
 					}}
 				>
 					<ArrowsClockwise className={isFetching ? "animate-spin" : undefined} />

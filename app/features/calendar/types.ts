@@ -22,6 +22,39 @@ export type CalendarIssue = {
 	parent: { id: string } | null;
 };
 
+/**
+ * A Linear project as the calendar needs it. The calendar places a project by
+ * its `targetDate`, the way it places an issue by its `dueDate`.
+ */
+export type CalendarProject = {
+	id: string;
+	name: string;
+	url: string;
+	/** TimelessDate, "YYYY-MM-DD". Treated as the publish date. */
+	targetDate: string;
+	/**
+	 * Set when the target date is a coarse period (month, quarter, half-year,
+	 * year) rather than a day. Linear still stores a day, so the card marks the
+	 * date as approximate. Null means the date is an exact day.
+	 */
+	targetDateResolution: string | null;
+	/** The project's own color, used as the card's left edge. */
+	color: string;
+	/** 0 to 1, from Linear's own estimate roll-up. */
+	progress: number;
+	status: { id: string; name: string; color: string; type: string };
+	lead: {
+		id: string;
+		name: string;
+		displayName: string;
+		avatarUrl: string | null;
+	} | null;
+	/** Workspace-level project labels. */
+	labels: { id: string; name: string; color: string }[];
+	/** Every team the project belongs to; a project can span several. */
+	teams: { id: string; key: string; name: string }[];
+};
+
 // A workflow state (status) as the picker uses it. `type` is Linear's category
 // (backlog/unstarted/started/completed/cancelled); `position` orders them within
 // a team the way Linear's own status menu does.
@@ -74,4 +107,17 @@ export type IssuesQueryParams = {
 	end: string;
 	teamIds?: string[];
 	labelIds?: string[];
+};
+
+/**
+ * Projects carry no label ids: the project label that scopes them is server
+ * configuration (LINEAR_PROJECT_LABEL), not a per-visit filter, so the browser
+ * only sends the window and the teams.
+ */
+export type ProjectsQueryParams = {
+	/** Inclusive "YYYY-MM-DD". */
+	start: string;
+	/** Inclusive "YYYY-MM-DD". */
+	end: string;
+	teamIds?: string[];
 };

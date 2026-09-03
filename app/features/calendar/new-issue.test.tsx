@@ -166,6 +166,7 @@ describe("DayCell", () => {
 				<DayCell
 					date={new Date(2026, 5, 15)}
 					issues={[]}
+					projects={[]}
 					isCurrentMonth
 					isToday={false}
 					onOpenIssue={vi.fn()}

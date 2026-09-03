@@ -11,7 +11,12 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 /** Load env.server fresh under an exact environment. */
 async function loadEnv(vars: Record<string, string>) {
 	vi.resetModules();
-	for (const name of ["LINEAR_API_KEY", "LINEAR_TEAM_DEFAULT", "LINEAR_LABEL_NAMESPACE"]) {
+	for (const name of [
+		"LINEAR_API_KEY",
+		"LINEAR_TEAM_DEFAULT",
+		"LINEAR_LABEL_NAMESPACE",
+		"LINEAR_PROJECT_LABEL",
+	]) {
 		vi.stubEnv(name, vars[name] ?? "");
 	}
 	return await import("./env.server");
@@ -50,6 +55,19 @@ describe("configuration", () => {
 			LINEAR_TEAM_DEFAULT: " GTM , ,CON ",
 		});
 		expect(env.LINEAR_TEAM_DEFAULT).toEqual(["GTM", "CON"]);
+	});
+
+	test("project labels are split, trimmed, and emptied of blanks", async () => {
+		const { env } = await loadEnv({
+			LINEAR_API_KEY: "lin_api_abc123",
+			LINEAR_PROJECT_LABEL: " Content , ,Campaign ",
+		});
+		expect(env.LINEAR_PROJECT_LABEL).toEqual(["Content", "Campaign"]);
+	});
+
+	test("no project label leaves projects unscoped", async () => {
+		const { env } = await loadEnv({ LINEAR_API_KEY: "lin_api_abc123" });
+		expect(env.LINEAR_PROJECT_LABEL).toEqual([]);
 	});
 });
 

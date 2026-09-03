@@ -38,8 +38,10 @@ Slated:
 
 - Places every Linear issue on a month calendar by its due date, which it treats
   as the publish date.
-- Reschedules an issue the moment you drop it on another day. The card moves
-  first and rolls back if Linear rejects the write.
+- Puts your Linear projects on the same grid, by their target date. Projects
+  show by default and turn off under **Options**.
+- Reschedules an issue or a project the moment you drop it on another day. The
+  card moves first and rolls back if Linear rejects the write.
 - Opens any issue in a modal to read its description and edit the due date or
   tags, including clearing the date to drop it off the calendar.
 - Creates issues without leaving the calendar. Hover a day and hit `+`, then set
@@ -96,6 +98,13 @@ Every value goes in `.env` (see [`.env.example`](./.env.example)).
 | `LINEAR_API_KEY` | Yes | A personal API key from [linear.app/settings/api](https://linear.app/settings/api). Slated acts as its owner, and the key stays server-side. |
 | `LINEAR_TEAM_DEFAULT` | No | Comma-separated team keys (for example, `GTM,CON`) preselected on a visitor's first load. |
 | `LINEAR_LABEL_NAMESPACE` | No | When set (for example, `con/`), scopes the calendar to labels under that prefix and strips it in the UI. |
+| `LINEAR_PROJECT_LABEL` | No | The project label (for example, `Content`) that decides which projects reach the calendar. Comma-separated for several. |
+
+Slated reads these variables once, when the server starts. Restart it after you
+change `.env`, or the running server keeps the old values: a stale
+`LINEAR_PROJECT_LABEL` shows a calendar with no projects on it and reports
+nothing. The **Options** menu names the label it is filtering on, so you can see
+which value the server actually holds.
 
 ### Adapting it to your workspace
 
@@ -107,6 +116,13 @@ to toggle.
 Leave `LINEAR_LABEL_NAMESPACE` blank and labels are just optional filters. Set it
 to `con/` and only those labels are offered, with the prefix stripped in the UI
 and unfiltered views scoped to issues carrying one.
+
+Projects are filtered the same way, first by the selected teams and then by
+`LINEAR_PROJECT_LABEL`. Project labels are workspace-level in Linear rather than
+per-team, so this one is a plain name: set it to `Content` and only projects
+carrying that label appear. Leave it blank and every project the selected teams
+can see is offered. The issue label filter in the header does not narrow
+projects, because the two label sets are separate in Linear.
 
 ## Deploying
 

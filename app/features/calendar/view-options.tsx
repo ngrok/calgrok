@@ -5,12 +5,14 @@ export type ViewOptions = {
 	showWeekends: boolean;
 	showCompleted: boolean;
 	showSubtasks: boolean;
+	showProjects: boolean;
 };
 
 const DEFAULTS: ViewOptions = {
 	showWeekends: false,
 	showCompleted: true,
 	showSubtasks: true,
+	showProjects: true,
 };
 
 const STORAGE_KEY = "slated:view-options:v1";
