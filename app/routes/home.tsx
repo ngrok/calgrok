@@ -1,6 +1,7 @@
 import { Button } from "@ngrok/mantle/button";
 import { data } from "react-router";
 import { CalendarPage } from "~/features/calendar/calendar-page";
+import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchSession } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/home";
@@ -48,6 +49,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 		return data({
 			viewer: session.viewer as Viewer,
 			organization: { name: session.organization.name } as Organization,
+			// The project label is server config, and a wrong or stale one empties
+			// the calendar with nothing to see. Show it in the UI instead.
+			projectLabel: env.LINEAR_PROJECT_LABEL as string[],
 			origin,
 		});
 	} catch {
@@ -56,6 +60,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 		return data({
 			viewer: null as Viewer | null,
 			organization: null as Organization | null,
+			projectLabel: env.LINEAR_PROJECT_LABEL as string[],
 			origin,
 		});
 	}
@@ -82,5 +87,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	if (!loaderData.viewer) {
 		return <InvalidApiKeyScreen />;
 	}
-	return <CalendarPage organization={loaderData.organization} />;
+	return (
+		<CalendarPage organization={loaderData.organization} projectLabel={loaderData.projectLabel} />
+	);
 }

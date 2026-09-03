@@ -40,5 +40,13 @@ export const env = {
 		.split(",")
 		.map((key) => key.trim())
 		.filter(Boolean),
+	// Project label names (e.g. "Content") that scope which projects reach the
+	// calendar. Project labels are workspace-level in Linear, so a name is
+	// enough — there is no per-team copy to resolve, as there is for issue
+	// labels. Blank offers every project the selected teams can see.
+	LINEAR_PROJECT_LABEL: read("LINEAR_PROJECT_LABEL")
+		.split(",")
+		.map((name) => name.trim())
+		.filter(Boolean),
 	NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

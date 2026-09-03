@@ -9,7 +9,7 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import { cx } from "@ngrok/mantle/cx";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { addMonths, startOfMonth } from "date-fns";
 import {
 	forwardRef,
@@ -26,8 +26,15 @@ import { monthGridRange, toISODate, WEEKDAY_LABELS } from "./date-utils";
 import { IssueCard } from "./issue-card";
 import { IssueDetailModal } from "./issue-detail-modal";
 import { MonthSection } from "./month-section";
-import { prefetchCalendarIssues, useUpdateDueDate } from "./queries";
-import type { CalendarIssue } from "./types";
+import { ProjectCard } from "./project-card";
+import {
+	prefetchCalendarIssues,
+	prefetchCalendarProjects,
+	useCalendarFetchCount,
+	useUpdateDueDate,
+	useUpdateTargetDate,
+} from "./queries";
+import type { CalendarIssue, CalendarProject } from "./types";
 import { useToday } from "./use-today";
 import type { ViewOptions } from "./view-options";
 
@@ -73,6 +80,20 @@ function useIssueById(id: string | null): CalendarIssue | null {
 	);
 }
 
+/**
+ * What a dragged card carries: exactly one of an issue or a project, set by
+ * DraggableIssueCard / DraggableProjectCard.
+ */
+type DragPayload = { issue?: CalendarIssue; project?: CalendarProject };
+
+function dragPayload(data: unknown): DragPayload | null {
+	const payload = data as DragPayload | undefined;
+	if (payload?.issue || payload?.project) {
+		return payload;
+	}
+	return null;
+}
+
 /** Imperative handle so the page header's "Today" button can scroll the list. */
 export type MonthListHandle = { scrollToToday: () => void };
 
@@ -92,7 +113,7 @@ export const MonthList = forwardRef<
 ) {
 	const hydrated = useHydrated();
 	const queryClient = useQueryClient();
-	const issueFetchCount = useIsFetching({ queryKey: ["calendar", "issues"] });
+	const gridFetchCount = useCalendarFetchCount();
 	const today = useToday();
 	const noTeams = teamIds.length === 0;
 
@@ -161,10 +182,10 @@ export const MonthList = forwardRef<
 	}, []);
 	useImperativeHandle(ref, () => ({ scrollToToday }), [scrollToToday]);
 
-	// Land on today on first paint, then correct once the first issue fetch
-	// settles because cards above today can change row heights.
+	// Land on today on first paint, then correct once the first fetch settles,
+	// because cards above today can change row heights.
 	const didInit = useRef(false);
-	const sawInitialIssueFetch = useRef(false);
+	const sawInitialFetch = useRef(false);
 	const initFallbackTimer = useRef<number | null>(null);
 	useLayoutEffect(() => {
 		if (hydrated && canFetchIssues && !didInit.current && todayRef.current) {
@@ -188,11 +209,11 @@ export const MonthList = forwardRef<
 		if (!hydrated || !canFetchIssues || didInit.current) {
 			return;
 		}
-		if (issueFetchCount > 0) {
-			sawInitialIssueFetch.current = true;
+		if (gridFetchCount > 0) {
+			sawInitialFetch.current = true;
 			return;
 		}
-		if (!sawInitialIssueFetch.current) {
+		if (!sawInitialFetch.current) {
 			return;
 		}
 
@@ -205,7 +226,7 @@ export const MonthList = forwardRef<
 			}
 		});
 		return () => window.cancelAnimationFrame(frame);
-	}, [hydrated, canFetchIssues, issueFetchCount, scrollToToday]);
+	}, [hydrated, canFetchIssues, gridFetchCount, scrollToToday]);
 
 	// Grow the list in whichever direction the user scrolls.
 	useEffect(() => {
@@ -253,38 +274,48 @@ export const MonthList = forwardRef<
 		const edges = [addMonths(first, -1), addMonths(last, 1)];
 		for (const month of edges) {
 			const range = monthGridRange(month);
-			prefetchCalendarIssues(queryClient, {
-				start: toISODate(range.gridStart),
-				end: toISODate(range.gridEnd),
-				teamIds,
-				labelIds,
-			});
+			const start = toISODate(range.gridStart);
+			const end = toISODate(range.gridEnd);
+			prefetchCalendarIssues(queryClient, { start, end, teamIds, labelIds });
+			if (options.showProjects) {
+				prefetchCalendarProjects(queryClient, { start, end, teamIds });
+			}
 		}
-	}, [months, queryClient, teamIds, labelIds, canFetchIssues]);
+	}, [months, queryClient, teamIds, labelIds, canFetchIssues, options.showProjects]);
 
 	// Issue detail modal, driven reactively from the cache (see useIssueById).
 	const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 	const selectedIssue = useIssueById(selectedIssueId);
 	const handleOpenIssue = useCallback((issue: CalendarIssue) => setSelectedIssueId(issue.id), []);
 
-	// Drag-to-reschedule across the whole visible list.
+	// Drag-to-reschedule across the whole visible list. A card carries either an
+	// issue or a project, and each writes its own date field.
 	const updateDueDate = useUpdateDueDate();
-	const [activeIssue, setActiveIssue] = useState<CalendarIssue | null>(null);
+	const updateTargetDate = useUpdateTargetDate();
+	const [activeCard, setActiveCard] = useState<DragPayload | null>(null);
 	// Require a small drag distance so clicking the issue/project links still works.
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
 	function handleDragStart(event: DragStartEvent) {
-		setActiveIssue((event.active.data.current?.issue as CalendarIssue | undefined) ?? null);
+		setActiveCard(dragPayload(event.active.data.current));
 	}
 
 	function handleDragEnd(event: DragEndEvent) {
-		const issue = event.active.data.current?.issue as CalendarIssue | undefined;
-		setActiveIssue(null);
-		const newDueDate = event.over?.id;
-		if (!issue || typeof newDueDate !== "string" || newDueDate === issue.dueDate) {
+		const dragged = dragPayload(event.active.data.current);
+		setActiveCard(null);
+		const day = event.over?.id;
+		if (!dragged || typeof day !== "string") {
 			return;
 		}
-		updateDueDate.mutate({ issueId: issue.id, dueDate: newDueDate });
+		if (dragged.issue) {
+			if (day !== dragged.issue.dueDate) {
+				updateDueDate.mutate({ issueId: dragged.issue.id, dueDate: day });
+			}
+			return;
+		}
+		if (dragged.project && day !== dragged.project.targetDate) {
+			updateTargetDate.mutate({ projectId: dragged.project.id, targetDate: day });
+		}
 	}
 
 	if (noTeams) {
@@ -338,9 +369,10 @@ export const MonthList = forwardRef<
 						<div ref={bottomSentinelRef} className="h-px" />
 					</div>
 					<DragOverlay>
-						{activeIssue ? (
+						{activeCard ? (
 							<div className="w-40 rotate-2 opacity-90">
-								<IssueCard issue={activeIssue} />
+								{activeCard.issue ? <IssueCard issue={activeCard.issue} /> : null}
+								{activeCard.project ? <ProjectCard project={activeCard.project} /> : null}
 							</div>
 						) : null}
 					</DragOverlay>

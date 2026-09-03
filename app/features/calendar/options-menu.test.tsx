@@ -11,11 +11,13 @@ const DEFAULT_OPTIONS: ViewOptions = {
 	showWeekends: false,
 	showCompleted: true,
 	showSubtasks: true,
+	showProjects: true,
 };
 
 function renderMenu({
 	options = DEFAULT_OPTIONS,
 	onToggle = vi.fn(),
+	projectLabel = [] as string[],
 	Probe = null as (() => null) | null,
 } = {}) {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -25,7 +27,7 @@ function renderMenu({
 			Component: () => (
 				<>
 					{Probe ? <Probe /> : null}
-					<OptionsMenu options={options} onToggle={onToggle} />
+					<OptionsMenu options={options} onToggle={onToggle} projectLabel={projectLabel} />
 				</>
 			),
 		},
@@ -64,6 +66,7 @@ describe("OptionsMenu", () => {
 			"Show weekends",
 			"Show completed",
 			"Show sub-tasks",
+			"Show projects",
 		]);
 		expect(screen.getAllByRole("menuitemradio").map((item) => item.textContent)).toEqual([
 			"System",
@@ -108,7 +111,9 @@ describe("OptionsMenu", () => {
 		await openMenu();
 
 		await userEvent.click(screen.getByRole("menuitem", { name: "Refresh" }));
+		// One refresh covers the whole grid: the issues and the projects on it.
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["calendar", "issues"] });
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ["calendar", "projects"] });
 	});
 
 	test("reports a sync in progress, then goes back to idle", async () => {
@@ -139,6 +144,26 @@ describe("OptionsMenu", () => {
 			expect(screen.getByRole("menuitem", { name: "Refresh" })).not.toHaveAttribute(
 				"data-disabled",
 			),
+		);
+	});
+
+	// LINEAR_PROJECT_LABEL is read once at server startup. A wrong or stale value
+	// shows an empty calendar and reports nothing, so the menu names the label it
+	// is actually filtering on.
+	test("names the project label it filters on", async () => {
+		renderMenu({ projectLabel: ["DevEd"] });
+		await openMenu();
+
+		const item = screen.getByRole("menuitemcheckbox", { name: /Show projects/ });
+		expect(item).toHaveTextContent("DevEd");
+	});
+
+	test("says nothing when no project label is configured", async () => {
+		renderMenu();
+		await openMenu();
+
+		expect(screen.getByRole("menuitemcheckbox", { name: "Show projects" })).toHaveTextContent(
+			/^Show projects$/,
 		);
 	});
 

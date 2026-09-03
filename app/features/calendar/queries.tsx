@@ -2,21 +2,27 @@ import { makeToast, Toast } from "@ngrok/mantle/toast";
 import {
 	keepPreviousData,
 	type QueryClient,
+	useIsFetching,
 	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
 import type {
 	CalendarIssue,
+	CalendarProject,
 	IssuesQueryParams,
 	LabelsResponse,
+	ProjectsQueryParams,
 	TeamsResponse,
 	WorkflowState,
 } from "./types";
 
+/** Cache entries captured before an optimistic write, for rollback. */
+type CachedEntries = [readonly unknown[], unknown][];
+
 function rollbackTo(
 	queryClient: QueryClient,
-	previous: [readonly unknown[], CalendarIssue[] | undefined][] | undefined,
+	previous: CachedEntries | undefined,
 	message: string,
 ) {
 	for (const [key, data] of previous ?? []) {
@@ -42,7 +48,26 @@ export const calendarKeys = {
 			(params.teamIds ?? []).join(","),
 			(params.labelIds ?? []).join(","),
 		] as const,
+	projects: (params: ProjectsQueryParams) =>
+		[ROOT, "projects", params.start, params.end, (params.teamIds ?? []).join(",")] as const,
 };
+
+// Issues and projects are two query families making up one grid, so anything
+// that refreshes or reports on the calendar has to cover both. Otherwise
+// projects quietly go stale while the issues around them update.
+
+/** How many grid requests are in flight, for the header's sync indicator. */
+export function useCalendarFetchCount(): number {
+	const issues = useIsFetching({ queryKey: [ROOT, "issues"] });
+	const projects = useIsFetching({ queryKey: [ROOT, "projects"] });
+	return issues + projects;
+}
+
+/** Refetch everything on the grid: both issues and projects. */
+export function invalidateCalendarGrid(queryClient: QueryClient) {
+	queryClient.invalidateQueries({ queryKey: [ROOT, "issues"] });
+	queryClient.invalidateQueries({ queryKey: [ROOT, "projects"] });
+}
 
 async function fetchIssues(params: IssuesQueryParams): Promise<CalendarIssue[]> {
 	const search = new URLSearchParams({ start: params.start, end: params.end });
@@ -70,6 +95,43 @@ export function useCalendarIssues(params: IssuesQueryParams, enabled: boolean) {
 		enabled,
 		// Keep showing the current month while the next one loads (no empty flash).
 		placeholderData: keepPreviousData,
+	});
+}
+
+async function fetchProjects(params: ProjectsQueryParams): Promise<CalendarProject[]> {
+	const search = new URLSearchParams({ start: params.start, end: params.end });
+	if (params.teamIds?.length) {
+		search.set("teamIds", params.teamIds.join(","));
+	}
+
+	const res = await fetch(`/api/projects?${search.toString()}`, {
+		headers: { Accept: "application/json" },
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to load projects (${res.status})`);
+	}
+	const json = (await res.json()) as { projects: CalendarProject[] };
+	return json.projects;
+}
+
+/** Projects placed by target date, in the same window as the month's issues. */
+export function useCalendarProjects(params: ProjectsQueryParams, enabled: boolean) {
+	return useQuery({
+		queryKey: calendarKeys.projects(params),
+		queryFn: () => fetchProjects(params),
+		enabled,
+		placeholderData: keepPreviousData,
+	});
+}
+
+/** Warm the projects cache for a month the user is likely to reach next. */
+export function prefetchCalendarProjects(client: QueryClient, params: ProjectsQueryParams) {
+	if ((params.teamIds?.length ?? 0) === 0) {
+		return Promise.resolve();
+	}
+	return client.prefetchQuery({
+		queryKey: calendarKeys.projects(params),
+		queryFn: () => fetchProjects(params),
 	});
 }
 
@@ -144,6 +206,7 @@ export function useIssueDescription(issueId: string | null) {
 }
 
 const issuesQueryFilter = { queryKey: [ROOT, "issues"] } as const;
+const projectsQueryFilter = { queryKey: [ROOT, "projects"] } as const;
 
 export type NewIssueInput = {
 	teamId: string;
@@ -272,6 +335,54 @@ export function useUpdateDueDate() {
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries(issuesQueryFilter);
+		},
+	});
+}
+
+async function postTargetDate(projectId: string, targetDate: string): Promise<void> {
+	const res = await fetch("/api/projects", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ projectId, targetDate }),
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to update target date (${res.status})`);
+	}
+}
+
+/**
+ * Reschedule a project's targetDate, the way useUpdateDueDate reschedules an
+ * issue: the card jumps to the new day, the mutation follows, and we roll back
+ * if Linear rejects it.
+ */
+export function useUpdateTargetDate() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ projectId, targetDate }: { projectId: string; targetDate: string }) =>
+			postTargetDate(projectId, targetDate),
+		onMutate: async ({ projectId, targetDate }) => {
+			await queryClient.cancelQueries(projectsQueryFilter);
+			const previous = queryClient.getQueriesData<CalendarProject[]>(projectsQueryFilter);
+			queryClient.setQueriesData<CalendarProject[]>(projectsQueryFilter, (old) =>
+				old?.map((project) =>
+					project.id === projectId
+						? // The drop is on one day, so the date is no longer a period.
+							{ ...project, targetDate, targetDateResolution: null }
+						: project,
+				),
+			);
+			return { previous };
+		},
+		onError: (_error, _vars, context) => {
+			rollbackTo(
+				queryClient,
+				context?.previous,
+				"We couldn't save that change — it's been reverted.",
+			);
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries(projectsQueryFilter);
 		},
 	});
 }

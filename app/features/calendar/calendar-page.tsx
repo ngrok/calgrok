@@ -10,7 +10,14 @@ import { OptionsMenu } from "./options-menu";
 import { useLabels, useTeams } from "./queries";
 import { useViewOptions } from "./view-options";
 
-export function CalendarPage({ organization }: { organization: { name: string } | null }) {
+export function CalendarPage({
+	organization,
+	projectLabel,
+}: {
+	organization: { name: string } | null;
+	/** Project label names from LINEAR_PROJECT_LABEL, shown beside the toggle. */
+	projectLabel: string[];
+}) {
 	const teamsQuery = useTeams();
 	const teams = teamsQuery.data?.teams ?? [];
 	const defaultTeamIds = teamsQuery.data?.defaultTeamIds ?? [];
@@ -139,7 +146,7 @@ export function CalendarPage({ organization }: { organization: { name: string } 
 					>
 						New issue
 					</Button>
-					<OptionsMenu options={options} onToggle={toggle} />
+					<OptionsMenu options={options} onToggle={toggle} projectLabel={projectLabel} />
 				</div>
 			</header>
 

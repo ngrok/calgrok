@@ -8,7 +8,7 @@ import {
 	startOfMonth,
 	startOfWeek,
 } from "date-fns";
-import type { CalendarIssue } from "./types";
+import type { CalendarIssue, CalendarProject } from "./types";
 
 // Work calendar: weeks start on Monday.
 const WEEK_STARTS_ON = 1 as const;
@@ -55,16 +55,29 @@ export function toISODate(date: Date): string {
 	return format(date, "yyyy-MM-dd");
 }
 
-/** Bucket issues by their dueDate ("YYYY-MM-DD") for O(1) day lookups. */
-export function groupIssuesByDueDate(issues: CalendarIssue[]): Map<string, CalendarIssue[]> {
-	const byDate = new Map<string, CalendarIssue[]>();
-	for (const issue of issues) {
-		const existing = byDate.get(issue.dueDate);
+/** Bucket dated records by their "YYYY-MM-DD" date for O(1) day lookups. */
+function groupByDate<T>(items: T[], dateOf: (item: T) => string): Map<string, T[]> {
+	const byDate = new Map<string, T[]>();
+	for (const item of items) {
+		const date = dateOf(item);
+		const existing = byDate.get(date);
 		if (existing) {
-			existing.push(issue);
+			existing.push(item);
 		} else {
-			byDate.set(issue.dueDate, [issue]);
+			byDate.set(date, [item]);
 		}
 	}
 	return byDate;
+}
+
+/** Bucket issues by their dueDate, the day the calendar places them on. */
+export function groupIssuesByDueDate(issues: CalendarIssue[]): Map<string, CalendarIssue[]> {
+	return groupByDate(issues, (issue) => issue.dueDate);
+}
+
+/** Bucket projects by their targetDate, the day the calendar places them on. */
+export function groupProjectsByTargetDate(
+	projects: CalendarProject[],
+): Map<string, CalendarProject[]> {
+	return groupByDate(projects, (project) => project.targetDate);
 }

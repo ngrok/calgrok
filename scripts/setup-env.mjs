@@ -28,6 +28,11 @@ LINEAR_TEAM_DEFAULT=
 # Optional. When set (for example, con/), the calendar only shows issues with
 # labels under this namespace and strips the prefix in the UI.
 LINEAR_LABEL_NAMESPACE=
+
+# Optional. The project label (for example, Content) that decides which Linear
+# projects reach the calendar. Blank offers every project the selected teams
+# can see.
+LINEAR_PROJECT_LABEL=
 `;
 }
 
