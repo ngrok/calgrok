@@ -1,6 +1,7 @@
 import { Button } from "@ngrok/mantle/button";
 import { data } from "react-router";
 import { CalendarPage } from "~/features/calendar/calendar-page";
+import { demoSession } from "~/lib/demo.server";
 import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchSession } from "~/lib/linear-graphql.server";
@@ -41,6 +42,16 @@ export function meta({ data: loaded }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
 	const origin = new URL(request.url).origin;
+
+	if (env.DEMO) {
+		const session = demoSession();
+		return data({
+			viewer: session.viewer as Viewer,
+			organization: session.organization as Organization,
+			projectLabel: [] as string[],
+			origin,
+		});
+	}
 
 	try {
 		// Viewer and organization in one request: the header needs both on every

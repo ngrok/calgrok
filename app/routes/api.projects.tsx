@@ -1,3 +1,4 @@
+import { demoProjects, demoUpdateProject } from "~/lib/demo.server";
 import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchCalendarProjects, updateProjectTargetDate } from "~/lib/linear-graphql.server";
@@ -19,6 +20,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : [];
 	if (teamIds.length === 0) {
 		throw new Response("Missing required 'teamIds' query param", { status: 400 });
+	}
+
+	if (env.DEMO) {
+		return Response.json({ projects: demoProjects({ start, end, teamIds }) });
 	}
 
 	const projects = await fetchCalendarProjects({
@@ -44,6 +49,11 @@ export async function action({ request }: Route.ActionArgs) {
 	// targetDate present (string to set, null to clear) vs. absent.
 	if (!("targetDate" in body)) {
 		throw new Response("Provide 'targetDate'", { status: 400 });
+	}
+
+	if (env.DEMO) {
+		demoUpdateProject(body.projectId, body.targetDate ?? null);
+		return Response.json({ ok: true });
 	}
 
 	await updateProjectTargetDate({

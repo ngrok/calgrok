@@ -1,3 +1,4 @@
+import { demoTeams } from "~/lib/demo.server";
 import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchTeams } from "~/lib/linear-graphql.server";
@@ -8,6 +9,10 @@ import type { Route } from "./+types/api.teams";
 // LINEAR_TEAM_DEFAULT (team keys) is resolved to ids here and returned as the
 // default selection the client applies on first visit.
 export async function loader(_: Route.LoaderArgs) {
+	if (env.DEMO) {
+		return Response.json(demoTeams());
+	}
+
 	const teams = await fetchTeams(linearAuthorization);
 	const defaultKeys = new Set(env.LINEAR_TEAM_DEFAULT.map((key) => key.toUpperCase()));
 	const defaultTeamIds = teams

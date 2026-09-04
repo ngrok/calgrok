@@ -15,6 +15,7 @@
 	"scripts": {
 		"setup:env": "node scripts/setup-env.mjs",
 		"dev": "react-router dev",
+		"demo": "SLATED_DEMO=1 react-router dev --port 3100",
 		"build": "react-router build",
 		"start": "react-router-serve ./build/server/index.js",
 		"typecheck": "react-router typegen && tsc",

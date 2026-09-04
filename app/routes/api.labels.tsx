@@ -1,4 +1,5 @@
 import type { LabelOption } from "~/features/calendar/types";
+import { demoLabels } from "~/lib/demo.server";
 import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchLabels } from "~/lib/linear-graphql.server";
@@ -10,6 +11,10 @@ import type { Route } from "./+types/api.labels";
 // as the default calendar scope. Other labels remain available as explicit
 // optional filters when they apply to the selected teams.
 export async function loader(_: Route.LoaderArgs) {
+	if (env.DEMO) {
+		return Response.json(demoLabels());
+	}
+
 	const namespace = env.LINEAR_LABEL_NAMESPACE;
 	const namespaceLower = namespace.toLowerCase();
 	const groups = new Map<string, LabelOption>();

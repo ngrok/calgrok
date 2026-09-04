@@ -16,9 +16,14 @@ function read(name: string): string {
 
 const apiKey = read("LINEAR_API_KEY");
 
+// Demo mode serves a generated calendar instead of a Linear workspace, so it
+// needs no key and reaches no API. `pnpm demo` sets this; see
+// `app/lib/demo.server.ts`.
+const demo = ["1", "true", "yes"].includes(read("SLATED_DEMO").toLowerCase());
+
 // Fail at startup with the two steps that fix it, rather than on the first
 // Linear request with a 401 that looks like a Linear outage.
-if (!apiKey) {
+if (!apiKey && !demo) {
 	throw new Error(
 		[
 			"Slated cannot start. LINEAR_API_KEY is not set.",
@@ -32,7 +37,10 @@ if (!apiKey) {
 }
 
 export const env = {
-	LINEAR_API_KEY: apiKey,
+	DEMO: demo,
+	// A placeholder in demo mode: the Linear client is constructed at module load
+	// either way, and demo mode never sends it anywhere.
+	LINEAR_API_KEY: apiKey || "slated-demo",
 	LINEAR_LABEL_NAMESPACE: read("LINEAR_LABEL_NAMESPACE"),
 	// Team keys (e.g. "GTM,CON") selected by default on first visit. The full
 	// workspace team list stays available; this only seeds the initial view.

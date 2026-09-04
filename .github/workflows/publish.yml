@@ -1,0 +1,59 @@
+# Publishes the Slated container image to GitHub Container Registry, so it can
+# be run without cloning or building anything:
+#
+#   docker run --rm -p 3000:3000 --env-file .env ghcr.io/ngrok/slated:latest
+#
+# `main` moves `latest`; a `v*` tag publishes the matching version tags. Both
+# also publish an immutable `sha-<commit>` tag.
+name: Publish image
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    # Pushes to ngrok's package namespace, so it can only work in this repo.
+    # Skipped in forks, which otherwise start publishing packages nobody asked
+    # for. Drop this line (and change the image name) to publish your own.
+    if: github.repository == 'ngrok/slated'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      # arm64 as well as amd64: the point of a published image is that it runs
+      # on an Apple Silicon laptop without a local build.
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
