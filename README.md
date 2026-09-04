@@ -152,61 +152,15 @@ Slated has no sign-in of its own, so anything other people can reach needs
 access control in front of it. Without one, every visitor holds your Linear read
 and write access.
 
-### On ngrok Ship
+A container image is published for every commit on `main`, so there's nothing to
+build:
 
-This is how we run Slated. GitHub Actions builds the container and pushes it to
-Ship's registry, then Ship runs it behind an HTTPS URL, so there's no host or
-registry for you to keep alive. Ship deploys from a connected repository rather
-than from an image you point it at, so start by forking.
+```bash
+docker run --rm -p 3000:3000 --env-file .env ghcr.io/ngrok/slated:latest
+```
 
-1. Fork this repo.
-2. In the [ngrok dashboard](https://dashboard.ngrok.com/ship), create an app and
-   connect your fork. Ship adds a build workflow to the fork, along with the
-   registry credential it needs as a repository secret.
-3. Set `LINEAR_API_KEY` on the app, plus whichever optional values from
-   [Configuration](#configuration) you want.
-4. Put OAuth on the endpoint with a [Traffic
-   Policy](https://ngrok.com/docs/traffic-policy/), so ngrok authenticates every
-   visitor before a request reaches Slated:
-
-   ```yaml
-   on_http_request:
-     - actions:
-         - type: oauth
-           config:
-             provider: google
-     - expressions:
-         - "!actions.ngrok.oauth.identity.email.endsWith('@example.com')"
-       actions:
-         - type: deny
-           config:
-             status_code: 403
-   ```
-
-   The first rule makes everyone sign in with Google. The second turns away
-   anyone outside your domain. ngrok hosts the OAuth app, so there's no client ID
-   or secret to register. Other providers, and rules that check group membership
-   instead of a domain, are in the [`oauth` action
-   docs](https://ngrok.com/docs/traffic-policy/actions/oauth/).
-
-   Don't skip this step. It's the only thing standing between your Linear
-   workspace and the internet, and it's how our own instance runs: the endpoint
-   is gated to `@ngrok.com` Google accounts, so ngrok employees reach the
-   calendar and nobody else does.
-5. Push to your fork. The workflow builds the Dockerfile, pushes the image, and
-   Ship deploys it.
-
-The Ship workflow already in this repo runs only for ngrok's own copy, so it
-stays skipped in your fork and won't fight the one Ship writes for you.
-
-> [!NOTE]
-> **Forking is temporary.** Ship can't yet deploy a container image you point it
-> at. When it can, take a prebuilt Slated image, set the environment variables,
-> and skip the fork.
-
-### Anywhere else
-
-Build the container and supply the same environment variables at runtime:
+Use `ghcr.io/ngrok/slated:sha-<commit>` to pin an exact build. Or build it
+yourself, and supply the same environment variables at runtime:
 
 ```bash
 docker build -t slated .
@@ -267,7 +221,7 @@ CI runs lint, typecheck, tests, and the build on every pull request.
 │   └── lib/           Env, the Linear client, the GraphQL queries, and the
 │                       demo calendar's fake workspace.
 ├── scripts/           pnpm setup:env.
-├── .github/workflows/ CI and the ngrok Ship build.
+├── .github/workflows/ CI and the container image publish.
 └── Dockerfile         Multi-stage production build.
 ```
 
