@@ -16,12 +16,19 @@
 ---
 
 Your content plan already lives in [Linear](https://linear.app), with due dates,
-labels, and assignees on every issue. Linear just won't show it to you as a
-month grid.
+labels, and assignees on every issue. For truly inexplicable reasons, Linear
+*still* won't let you see all this on a grid.
 
-Slated is that grid. It reads your issues from the Linear API, places each one
-on the day it's due, and moves it when you drag it. It stores nothing itself, so
-Linear stays the only source of truth.
+Like, a content calendar.
+
+Slated is that calendar. It reads your issues from the Linear API, places each
+one on the day it's due, and moves it when you drag it. It stores nothing
+itself, so Linear remains the only source of truth.
+
+We plan a ton of content at ngrok, and our issues already live in Linear. What
+we didn't have was a nice way to see what's coming, or to share it with the rest
+of the team. Slated is exactly that, designed around simplicity and performance
+from the start.
 
 <!--
   TODO: add the lead screenshot at docs/screenshot.png, then uncomment.
@@ -36,10 +43,9 @@ Linear stays the only source of truth.
 
 Slated:
 
-- Places every issue on a month grid by its due date, treated as the publish
-  date.
-- Puts projects on the same grid by their target date, on by default and
-  switchable under **Options**.
+- Places every issue on a month grid by its due date, and every project by its
+  target date, both treated as the publish date. Projects switch off under
+  **Options**.
 - Reschedules an issue or project the moment you drop it on a new day. The card
   moves first, then rolls back if Linear rejects the write.
 - Opens any issue in a modal to read its description and edit the due date or
@@ -47,9 +53,6 @@ Slated:
 - Creates issues in place. Hover a day, hit `+`, and set a title, team, due
   date, status, priority, and tags.
 - Discovers your teams from Linear, then filters by team and label.
-- Keeps the rest under one **Options** menu: view toggles, theme, and a manual
-  sync. Both persist between visits, and the theme follows your system until you
-  pick one.
 
 ## Quickstart
 
@@ -82,8 +85,8 @@ LINEAR_API_KEY=lin_api_...
 
 > [!NOTE]
 > **Your workspace may not allow this.** Linear admins control personal API keys
-> under **Settings > Administration > API**. If that page won't issue one, ask an
-> admin.
+> under **Settings > Administration > API**. If that page won't issue one, ask
+> an admin.
 
 ### See it without Linear
 
@@ -165,15 +168,8 @@ caches what it fetches for the session with
 [mantle](https://mantle.ngrok.com), ngrok's design system.
 
 [`docs/design.md`](./docs/design.md) is the original design doc and build log,
-including the performance work that drove the rebuild. It describes an OAuth
-flow Slated no longer has.
-
-## Why we built it
-
-We plan a lot of content at ngrok, and our issues already lived in Linear. The
-calendar we'd been using on top of them froze the browser tab often enough that
-people stopped opening it. Slated is the rebuild, designed around performance
-from the start.
+including the performance work behind it. It describes an OAuth flow Slated no
+longer has.
 
 ## Development
 
