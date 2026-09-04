@@ -26,7 +26,9 @@ no second system to keep in sync.
 
 <!--
   TODO: add the lead screenshot at docs/screenshot.png, then uncomment.
-  Capture the month grid signed in, with a few teams selected, at 1440px wide.
+  Run `pnpm demo` and capture the month grid at http://localhost:3100 at 1440px
+  wide. No API key needed, and the fake workspace it generates is the same one
+  every time.
   <p align="center">
     <img src="docs/screenshot.png" alt="The Slated month grid, with issue cards placed on their due dates.">
   </p>
@@ -89,6 +91,25 @@ straight away.
 > page won't issue you one, that's why, and you'll need an admin to turn them
 > back on.
 
+### See it without Linear
+
+To look before you make a key, `pnpm demo` runs the real calendar against a
+generated workspace: invented teams, projects, and a few months of content work
+that never existed.
+
+```bash
+pnpm install
+pnpm demo         # http://localhost:3100
+```
+
+It needs no `.env` and reaches no API. Everything works, drag to reschedule and
+the new-issue dialog included, and those edits live in memory until you stop the
+server. The port is 3100 so a demo can't collide with a real instance on 3000.
+
+The generated calendar is deterministic and anchored on today, so the same day
+always holds the same cards and the past always reads as shipped. That's what
+makes it worth screenshotting.
+
 ## Configuration
 
 Every value goes in `.env` (see [`.env.example`](./.env.example)).
@@ -99,6 +120,7 @@ Every value goes in `.env` (see [`.env.example`](./.env.example)).
 | `LINEAR_TEAM_DEFAULT` | No | Comma-separated team keys (for example, `GTM,CON`) preselected on a visitor's first load. |
 | `LINEAR_LABEL_NAMESPACE` | No | When set (for example, `con/`), scopes the calendar to labels under that prefix and strips it in the UI. |
 | `LINEAR_PROJECT_LABEL` | No | The project label (for example, `Content`) that decides which projects reach the calendar. Comma-separated for several. |
+| `SLATED_DEMO` | No | Set to `1` to serve the generated demo calendar instead of Linear. No API key needed, and no Linear request is made. |
 
 Slated reads these variables once, when the server starts. Restart it after you
 change `.env`, or the running server keeps the old values: a stale
@@ -224,6 +246,7 @@ to run against another Linear workspace.
 
 ```bash
 pnpm dev          # dev server on :3000
+pnpm demo         # generated demo calendar on :3100, no API key
 pnpm test         # vitest
 pnpm typecheck    # react-router typegen + tsc
 pnpm lint         # biome
@@ -241,7 +264,8 @@ CI runs lint, typecheck, tests, and the build on every pull request.
 │   ├── routes/        The calendar page and the API routes that proxy Linear.
 │   ├── features/
 │   │   └── calendar/  The month grid, cards, filters, modal, and data hooks.
-│   └── lib/           Env, the Linear client, and the GraphQL queries.
+│   └── lib/           Env, the Linear client, the GraphQL queries, and the
+│                       demo calendar's fake workspace.
 ├── scripts/           pnpm setup:env.
 ├── .github/workflows/ CI and the ngrok Ship build.
 └── Dockerfile         Multi-stage production build.

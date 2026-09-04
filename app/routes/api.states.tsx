@@ -1,3 +1,5 @@
+import { demoStates } from "~/lib/demo.server";
+import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import { fetchWorkflowStates } from "~/lib/linear-graphql.server";
 import type { Route } from "./+types/api.states";
@@ -11,6 +13,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const teamIds = teamIdsParam ? teamIdsParam.split(",").filter(Boolean) : [];
 	if (teamIds.length === 0) {
 		throw new Response("Missing required 'teamIds' query param", { status: 400 });
+	}
+
+	if (env.DEMO) {
+		return Response.json({ states: demoStates() });
 	}
 
 	const states = await fetchWorkflowStates(linearAuthorization, teamIds);

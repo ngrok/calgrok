@@ -1,3 +1,5 @@
+import { demoIssues, demoUpdateIssue } from "~/lib/demo.server";
+import { env } from "~/lib/env.server";
 import { linearAuthorization } from "~/lib/linear.server";
 import {
 	fetchCalendarIssues,
@@ -26,6 +28,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 	const labelIdsParam = url.searchParams.get("labelIds");
 	const labelIds = labelIdsParam ? labelIdsParam.split(",").filter(Boolean) : [];
+
+	if (env.DEMO) {
+		return Response.json({ issues: demoIssues({ start, end, teamIds, labelIds }) });
+	}
 
 	const issues = await fetchCalendarIssues({
 		authorization: linearAuthorization,
@@ -56,6 +62,16 @@ export async function action({ request }: Route.ActionArgs) {
 	const hasState = typeof body.stateId === "string";
 	if (!hasDueDate && !hasLabels && !hasState) {
 		throw new Response("Provide 'dueDate', 'labelIds', and/or 'stateId'", { status: 400 });
+	}
+
+	if (env.DEMO) {
+		demoUpdateIssue({
+			issueId: body.issueId,
+			...(hasDueDate ? { dueDate: body.dueDate ?? null } : {}),
+			...(hasLabels ? { labelIds: body.labelIds } : {}),
+			...(hasState ? { stateId: body.stateId } : {}),
+		});
+		return Response.json({ ok: true });
 	}
 
 	if (hasDueDate) {
